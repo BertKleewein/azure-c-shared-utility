@@ -3,6 +3,7 @@
 
 #this is CMakeLists.txt for the folder tests of C shared utility
 add_subdirectory(agenttime_ut)
+add_subdirectory(atrpc_ut)
 add_subdirectory(base64_ut)
 add_subdirectory(buffer_ut)
 if(${use_condition})
@@ -58,11 +59,15 @@ endif()
 #Add adapters tests
 add_subdirectory(tlsioarduino_ut)
 add_subdirectory(platformarduino_ut)
+add_subdirectory(platform_msp430_ut)
+add_subdirectory(tickcounter_msp430_ut)
 if(use_cyclonessl AND WIN32)
 	add_subdirectory(tlsio_cyclonessl_ut)
 	add_subdirectory(tlsio_cyclonessl_socket_bsd_ut)
 endif()
 add_subdirectory(utf8_checker_ut)
+
+add_subdirectory(uartio_msp430_ut)
 
 #Add template as reference for new tests
 add_subdirectory(template_ut)

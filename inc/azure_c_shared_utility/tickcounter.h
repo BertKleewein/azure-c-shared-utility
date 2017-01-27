@@ -4,14 +4,14 @@
 #ifndef TICKCOUNTER_H
 #define TICKCOUNTER_H
 
-#ifdef __cplusplus
-extern "C" {
-#include <cstdint>
-#else
-#include <stdint.h>
-#endif /* __cplusplus */
-
 #include "azure_c_shared_utility/umock_c_prod.h"
+
+#ifdef __cplusplus
+  #include <cstdint>
+  extern "C" {
+#else
+  #include <stdint.h>
+#endif /* __cplusplus */
 
     typedef uint_fast32_t tickcounter_ms_t;
     typedef struct TICK_COUNTER_INSTANCE_TAG* TICK_COUNTER_HANDLE;
@@ -21,7 +21,7 @@ extern "C" {
     MOCKABLE_FUNCTION(, int, tickcounter_get_current_ms, TICK_COUNTER_HANDLE, tick_counter, tickcounter_ms_t*, current_ms);
 
 #ifdef __cplusplus
-}
+  }
 #endif /* __cplusplus */
 
 #endif /* TICKCOUNTER_H */
