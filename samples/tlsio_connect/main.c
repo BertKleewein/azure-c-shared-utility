@@ -49,6 +49,11 @@ int main(int argc, char** argv)
 
     (void)argc, (void)argv;
 
+    printf("Line1 is %d\n",__LINE__);
+    printf("Line2 is %d\n",__LINE__);
+    printf("Fail1 is %d\n",__FAILURE__);
+    printf("Faile is %d\n",__FAILURE__);
+
     if (platform_init() != 0)
     {
         LogError("Cannot initialize platform.");

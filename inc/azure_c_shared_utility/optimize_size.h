@@ -6,6 +6,7 @@
 
 #if (defined __MSP430FR5969__)
     // BKTODO: EXCLUDE_ALL_SHAS_BUT_256 should be in makefile
+    #define DONT_USE_UPLOADTOBLOB
     #define EXCLUDE_ALL_SHAS_BUT_256    
     #define OPTIMIZE_RETURN_CODES
     #define NO_VERBOSE_OUTPUT
