@@ -13,10 +13,6 @@
   #include <time.h>
 #endif
 
-#ifdef _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#endif
-
 // Test framework `#includes`
 #include "testrunnerswitcher.h"
 #include "umock_c.h"

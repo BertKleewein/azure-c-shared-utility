@@ -162,6 +162,13 @@ extern "C++" {
 #endif
 #endif
 
+#ifndef EINVAL
+#define EINVAL      22  /* Invalid argument */
+#endif
+#ifndef ENOMEM
+#define ENOMEM      12  /* Out of memory */
+#endif
+
 #ifdef __cplusplus
 }
 #endif

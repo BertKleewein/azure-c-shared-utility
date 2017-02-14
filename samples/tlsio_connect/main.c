@@ -6,6 +6,7 @@
 #include "azure_c_shared_utility/xio.h"
 #include "azure_c_shared_utility/tlsio.h"
 #include "azure_c_shared_utility/platform.h"
+#include "azure_c_shared_utility/xlogging.h"
 
 static void on_io_open_complete(void* context, IO_OPEN_RESULT open_result)
 {
@@ -21,12 +22,12 @@ static void on_io_open_complete(void* context, IO_OPEN_RESULT open_result)
             "\r\n";
         if (xio_send(tlsio, to_send, sizeof(to_send), NULL, NULL) != 0)
         {
-            (void)printf("Send failed\r\n");
+            LogError("Send failed\r\n");
         }
     }
     else
     {
-        (void)printf("Open error\r\n");
+        LogError("Open error\r\n");
     }
 }
 
@@ -39,7 +40,7 @@ static void on_io_bytes_received(void* context, const unsigned char* buffer, siz
 static void on_io_error(void* context)
 {
     (void)context;
-    (void)printf("IO reported an error\r\n");
+    LogError("IO reported an error\r\n");
 }
 
 int main(int argc, char** argv)
@@ -50,7 +51,7 @@ int main(int argc, char** argv)
 
     if (platform_init() != 0)
     {
-        (void)printf("Cannot initialize platform.");
+        LogError("Cannot initialize platform.");
         result = __FAILURE__;
     }
     else
@@ -58,7 +59,7 @@ int main(int argc, char** argv)
         const IO_INTERFACE_DESCRIPTION* tlsio_interface = platform_get_default_tlsio();
         if (tlsio_interface == NULL)
         {
-            (void)printf("Error getting tlsio interface description.");
+            LogError("Error getting tlsio interface description.");
             result = __FAILURE__;
         }
         else
@@ -71,14 +72,14 @@ int main(int argc, char** argv)
             tlsio = xio_create(tlsio_interface, &tlsio_config);
             if (tlsio == NULL)
             {
-                (void)printf("Error creating TLS IO.");
+                LogError("Error creating TLS IO.");
                 result = __FAILURE__;
             }
             else
             {
                 if (xio_open(tlsio, on_io_open_complete, tlsio, on_io_bytes_received, tlsio, on_io_error, tlsio) != 0)
                 {
-                    (void)printf("Error opening TLS IO.");
+                    LogError("Error opening TLS IO.");
                     result = __FAILURE__;
                 }
                 else

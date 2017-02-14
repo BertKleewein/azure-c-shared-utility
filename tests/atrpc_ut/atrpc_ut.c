@@ -11,10 +11,6 @@
   #include <time.h>
 #endif
 
-#ifdef _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#endif
-
 // Test framework #includes
 #include "testrunnerswitcher.h"
 #include "umock_c.h"
@@ -1810,6 +1806,8 @@ TEST_FUNCTION(on_io_close_complete_SCENARIO_success)
     atrpc_destroy(atrpc);
 }
 
+#if 0
+// BKTODO: remove these requirements
 /* Tests_SRS_ATRPC_27_068: [ on_io_error() shall free the stored command string. ] */
 /* Tests_SRS_ATRPC_27_069: [ on_io_error() shall call the terminal adapter response callback passed as ta_response to attention() using the ta_response_context parameter passed to attention() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the message parameter. ] */
 TEST_FUNCTION(on_io_error_SCENARIO_success)
@@ -1846,6 +1844,7 @@ TEST_FUNCTION(on_io_error_SCENARIO_success)
     ASSERT_ARE_EQUAL(int, 0, error);
     atrpc_destroy(atrpc);
 }
+#endif
 
 /* Tests_SRS_ATRPC_27_071: [ If the open_result parameter is OPEN_OK, then on_io_open_complete() shall initiate the auto-bauding procedure by calling (void)atrpc_attention(void * context, const char * const command_string, const size_t command_string_length const size_t timeout_ms, TA_RESPONSE const ta_response, const void * const ta_response_context) using the incoming context parameter as the handle parameter, NULL as the command_string parameter, 0 as the command_string_length parameter, 250 as the timeout_ms parameter, modem_handshake as the ta_response parameter, and ta_response_context as the context parameter. ] */
 TEST_FUNCTION(on_io_open_complete_SCENARIO_success)

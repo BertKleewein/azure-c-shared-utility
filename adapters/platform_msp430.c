@@ -11,153 +11,263 @@
 
 #include <driverlib.h>
 
-#include "azure_c_shared_utility/tickcounter_msp430.h"
+#include "tickcounter_msp430.h"
+#include "msp430.h"
+#include "tlsio_sim800.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4068)
 #endif
 
-int platform_init (void) {
-    int error;
-    tickcounter_ms_t mark_ms, current_ms;
-    TICK_COUNTER_HANDLE tick_counter;
+// BKTODO: ints are probably 16 bits here.  Look at warnings and change precision
 
-    if (0 != timer_a3_init()) {
-        error = __LINE__;
-    } else if ( NULL == (tick_counter = tickcounter_create()) ) {
-        error = __LINE__;
-    } else {
-        /*
-         * Port 3 pin 5 is connected to the Sim808 Status pin.
-         * HIGH on the pin indicates modem is ON, otherwise OFF.
-         */
-        GPIO_setAsInputPin(GPIO_PORT_P3, GPIO_PIN5);
 
-        /*
-         * Port 4 pin 6 is connected to GSM POWER KEY pin.
-         * A 1 second HIGH pulse will turn ON/OFF the modem.
-         */
-        GPIO_setAsOutputPin(GPIO_PORT_P4, GPIO_PIN6);
+// BKTODO: can I build with printf support=minimal or with dude's minimal printf code?
 
-        /*
-         * The corresponding pin on the Sim808 has a built-in pulldown
-         * resistor, so we set the pin to the resting position or LOW.
-         */
-        GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
+#define TURBO_BUTTON 1
+#define LUDICROUS_SPEED 0
 
-        /*
-         * The Sim808 status pin reflects the status of the SIM808
-         * If the device is powered down, the value is GPIO_INPUT_PIN_LOW.
-         * Otherwise if the device is powered up, the value is GPIO_INPUT_PIN_HIGH
-         */
-        if (GPIO_INPUT_PIN_HIGH == GPIO_getInputPinValue(GPIO_PORT_P3, GPIO_PIN5)) {
-            // Sim808 is already enabled
-            error = 0;
-        } else {
-            /*
-             * The Sim808 must be powered on for 550ms before
-             * it is ready to receive any interaction.
-             *
-             * NOTE: During the creation of a tickcounter, a millisecond
-             *       snapshot is captured and used as an offset.
-             */
-            for (error = current_ms = 0 ; (0 == error) && (550 >= current_ms) ; error = tickcounter_get_current_ms(tick_counter, &current_ms));
-            if (0 != error) {
-                error = __LINE__;
-            } else {
-                // Send a HIGH pulse to the PWRKEY pin to signal the Sim808 to wake.
-                GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
+static TICK_COUNTER_HANDLE tick_counter;
 
-                // The pulse must be at least 1 second long
-                for (mark_ms = current_ms; (0 == error) && ((1100 + mark_ms) >= current_ms); error = tickcounter_get_current_ms(tick_counter, &current_ms));
-                if (0 != error) {
-                    error = __LINE__;
-                } else {
-                    /*
-                    * The corresponding pin on the Sim808 has a built-in pulldown
-                    * resistor, so we set the pin to the resting position or LOW.
-                    */
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
+#define SIM808_STATUS_PIN GPIO_PORT_P3, GPIO_PIN5
+#define SIM808_POWER_PIN GPIO_PORT_P4, GPIO_PIN6
+#define SIM808_DTR_PIN GPIO_PORT_P4, GPIO_PIN5
 
-                    // Ensure Sim808 is ready before exit
-                    for (; GPIO_INPUT_PIN_HIGH != GPIO_getInputPinValue(GPIO_PORT_P3, GPIO_PIN5) ;);
-                }
+int msp430_sleep(tickcounter_ms_t sleepTimeMs)
+{
+    int result;
+    tickcounter_ms_t current_ms, start_ms;
+
+    if (0 != tickcounter_get_current_ms(tick_counter, &start_ms))
+    {
+        result = __FAILURE__;
+    }
+    else
+    {
+        result = 0;
+        current_ms = start_ms;
+        while ((result == 0) && ((current_ms - start_ms)  <= sleepTimeMs))
+        {
+            if (0 != tickcounter_get_current_ms(tick_counter, &current_ms))
+            {
+                result = __FAILURE__;
             }
         }
+    }
+    
+    return result;
+}
 
-        // Configure the TX/RX lines (port 2, pins 5 and 6) for communication with the SIM808
-        GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, (GPIO_PIN5 | GPIO_PIN6), GPIO_SECONDARY_MODULE_FUNCTION);
+int msp430_turn_on_sim808()
+{
+    int result;
 
-        tickcounter_destroy(tick_counter);
+
+    /* Port 4 pin 5 is connected to the Sim808 DTR line.
+     * pulling this pin low for 1 second will exit data mode
+     */
+    GPIO_setAsOutputPin(SIM808_DTR_PIN);
+    GPIO_setOutputHighOnPin(SIM808_DTR_PIN);
+    
+    /*
+     * Port 3 pin 5 is connected to the Sim808 Status pin.
+     * HIGH on the pin indicates modem is ON, otherwise OFF.
+     */
+    GPIO_setAsInputPin(SIM808_STATUS_PIN);
+
+    /*
+     * Port 4 pin 6 is connected to GSM POWER KEY pin.
+     * A 1 second HIGH pulse will turn ON/OFF the modem.
+     */
+    GPIO_setAsOutputPin(SIM808_POWER_PIN);
+
+    /*
+     * The corresponding pin on the Sim808 has a built-in pulldown
+     * resistor, so we set the pin to the resting position or LOW.
+     */
+    GPIO_setOutputLowOnPin(SIM808_POWER_PIN);
+
+    /*
+     * The Sim808 status pin reflects the status of the SIM808
+     * If the device is powered down, the value is GPIO_INPUT_PIN_LOW.
+     * Otherwise if the device is powered up, the value is GPIO_INPUT_PIN_HIGH
+     */
+    if (GPIO_INPUT_PIN_HIGH == GPIO_getInputPinValue(SIM808_STATUS_PIN)) {
+        // Sim808 is already enabled
+        result = 0;
+    } else {
+        /*
+         * The Sim808 must be powered on for 550ms before
+         * it is ready to receive any interaction.
+         */
+         if (0 != msp430_sleep(550)) {
+            result = __FAILURE__;
+        } else {
+            // Send a HIGH pulse to the PWRKEY pin to signal the Sim808 to wake.
+            GPIO_setOutputHighOnPin(SIM808_POWER_PIN);
+
+            // The pulse must be at least 1 second long
+            if (0 != msp430_sleep(1100)) {
+                result = __FAILURE__;
+            } else {
+                /*
+                * The corresponding pin on the Sim808 has a built-in pulldown
+                * resistor, so we set the pin to the resting position or LOW.
+                */
+                GPIO_setOutputLowOnPin(SIM808_POWER_PIN);
+
+                // Ensure Sim808 is ready before exit
+                for (; GPIO_INPUT_PIN_HIGH != GPIO_getInputPinValue(SIM808_STATUS_PIN) ;);
+
+                result = 0;
+            }
+        }
+    }
+
+    return result;
+}
+
+int platform_init (void) {
+    int error;
+    
+    // Configure the TX/RX lines (port 2, pins 5 and 6) for communication with the SIM808
+    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, (GPIO_PIN5 | GPIO_PIN6), GPIO_SECONDARY_MODULE_FUNCTION);
+
+    WDTCTL = WDTPW | WDTHOLD;   // Stop watchdog timer
+  #if TURBO_BUTTON
+   #if LUDICROUS_SPEED
+    (void)CS_setDCOFreq(CS_DCORSEL_1, CS_DCOFSEL_6);
+   #else
+    (void)CS_setDCOFreq(CS_DCORSEL_1, CS_DCOFSEL_4);
+   #endif
+    (void)CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_2);
+  #else
+    // Default values
+    (void)CS_setDCOFreq(CS_DCORSEL_0, CS_DCOFSEL_6);
+    (void)CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_8);
+  #endif
+
+    // Initialize Port A
+    PAOUT = 0x00;  // Set Port A to LOW
+    PADIR = 0x00;  // Set Port A to INPUT
+
+    // Initialize Port B
+    PBOUT = 0x00;  // Set Port B to LOW
+    PBDIR = 0x00;  // Set Port B to OUTPUT
+
+    PM5CTL0 &= ~LOCKLPM5;       // Disable the GPIO power-on default high-impedance mode to
+                                // activate previously configured port settingsGS (affects RTC)
+    __bis_SR_register(GIE);     // Enable Global Interrupt
+
+
+    if ( NULL == (tick_counter = tickcounter_create()) ) {
+        error = __FAILURE__;
+    } else if (0 != timer_a3_init()) {
+        error = __FAILURE__;
+    } else if (0 != msp430_turn_on_sim808()) {
+        error = __FAILURE__;
+    } else {
+        error = 0;
     }
 
     return error;
 }
 
+int msp430_turn_off_sim808()
+{
+    int result;
+    
+    /*
+     * Port 3 pin 5 is connected to the Sim808 Status pin.
+     * HIGH on the pin indicates modem is ON, otherwise OFF.
+     */
+    GPIO_setAsInputPin(SIM808_STATUS_PIN);
+
+    /*
+     * Port 4 pin 6 is connected to GSM POWER KEY pin.
+     * A 1 second HIGH pulse will turn ON/OFF the modem.
+     */
+    GPIO_setAsOutputPin(SIM808_POWER_PIN);
+
+    /*
+     * The corresponding pin on the Sim808 has a built-in pulldown
+     * resistor, so we set the pin to the resting position or LOW.
+     */
+    GPIO_setOutputLowOnPin(SIM808_POWER_PIN);
+    
+    /*
+     * The Sim808 status pin reflects the status of the SIM808
+     * If the device is powered down, the value is GPIO_INPUT_PIN_LOW.
+     * Otherwise if the device is powered up, the value is GPIO_INPUT_PIN_HIGH
+     */
+    if (GPIO_INPUT_PIN_HIGH == GPIO_getInputPinValue(SIM808_STATUS_PIN)) {
+        // Send a HIGH pulse to the PWRKEY pin to signal the Sim808 to turn off.
+        GPIO_setOutputHighOnPin(SIM808_POWER_PIN);
+
+        /*
+         * make the pulse 1 second long
+         */
+        if (0 != msp430_sleep(1100)) {
+            result = __FAILURE__;
+        } else {
+            /*
+             * The corresponding pin on the Sim808 has a built-in pulldown
+             * resistor, so we set the pin to the resting position or LOW.
+             */
+            GPIO_setOutputLowOnPin(SIM808_POWER_PIN);
+
+            // Ensure Sim808 is ready before exit
+            for (; GPIO_INPUT_PIN_LOW != GPIO_getInputPinValue(SIM808_STATUS_PIN) ;);
+
+            result = 0;
+        }
+    } else {
+        result = 0;
+    }
+
+    return result;
+}
+
+int msp430_power_cycle_sim808()
+{
+    int result;
+    
+    if (0 != msp430_turn_off_sim808())
+    {
+        result = __FAILURE__;
+    } else if ( 0 != msp430_turn_on_sim808()) {
+        result = __FAILURE__;
+    } else {
+        result = 0;
+    }
+    
+    return result;
+}
+
+int msp430_exit_sim808_data_mode()
+{
+    int result;
+    printf("exiting data mode\n");
+    
+    GPIO_setOutputLowOnPin(SIM808_DTR_PIN);
+    if (0 != msp430_sleep(1100)) {
+        result = __FAILURE__;
+    } else {
+        GPIO_setOutputHighOnPin(SIM808_DTR_PIN);
+        result = 0;
+    }
+    
+    return result;
+}
 
 void platform_deinit (void) {
-    TICK_COUNTER_HANDLE tick_counter;
-    tickcounter_ms_t current_ms;
-
-    if (NULL != (tick_counter = tickcounter_create())) {
-        /*
-         * Port 3 pin 5 is connected to the Sim808 Status pin.
-         * HIGH on the pin indicates modem is ON, otherwise OFF.
-         */
-        GPIO_setAsInputPin(GPIO_PORT_P3, GPIO_PIN5);
-
-        /*
-         * Port 4 pin 6 is connected to GSM POWER KEY pin.
-         * A 1 second HIGH pulse will turn ON/OFF the modem.
-         */
-        GPIO_setAsOutputPin(GPIO_PORT_P4, GPIO_PIN6);
-
-        /*
-         * The corresponding pin on the Sim808 has a built-in pulldown
-         * resistor, so we set the pin to the resting position or LOW.
-         */
-        GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
-
-        /*
-         * The Sim808 status pin reflects the status of the SIM808
-         * If the device is powered down, the value is GPIO_INPUT_PIN_LOW.
-         * Otherwise if the device is powered up, the value is GPIO_INPUT_PIN_HIGH
-         */
-        if (GPIO_INPUT_PIN_HIGH == GPIO_getInputPinValue(GPIO_PORT_P3, GPIO_PIN5)) {
-            int error;
-
-            // Send a HIGH pulse to the PWRKEY pin to signal the Sim808 to wake.
-            GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
-
-            /*
-             * The Sim808 must be powered on for 550ms before
-             * it is ready to receive any interaction.
-             *
-             * NOTE: During the creation of a tickcounter, a millisecond
-             *       snapshot is captured and used as an offset.
-             */
-            for (error = current_ms = 0; (0 == error) && (1100 >= current_ms); error = tickcounter_get_current_ms(tick_counter, &current_ms));
-            if (0 != error) {
-                error = __LINE__;
-            } else {
-                /*
-                 * The corresponding pin on the Sim808 has a built-in pulldown
-                 * resistor, so we set the pin to the resting position or LOW.
-                 */
-                GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
-
-                // Ensure Sim808 is ready before exit
-                for (; GPIO_INPUT_PIN_LOW != GPIO_getInputPinValue(GPIO_PORT_P3, GPIO_PIN5) ;);
-            }
-        }
-
-        tickcounter_destroy(tick_counter);
-    }
+    msp430_turn_off_sim808();
     timer_a3_deinit();
+    tickcounter_destroy(tick_counter);
 }
 
 
 const IO_INTERFACE_DESCRIPTION * platform_get_default_tlsio (void) {
-	return (const IO_INTERFACE_DESCRIPTION *)NULL;
+    return tlsio_sim800_get_interface_description();
 }
 

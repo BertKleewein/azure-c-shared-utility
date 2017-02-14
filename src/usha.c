@@ -9,6 +9,7 @@
 */
 
 #include "azure_c_shared_utility/sha.h"
+#include "azure_c_shared_utility/optimize_size.h"
 
 /*
 *  USHAReset
@@ -32,11 +33,13 @@ int USHAReset(USHAContext *ctx, enum SHAversion whichSha)
     if (ctx) {
         ctx->whichSha = whichSha;
         switch (whichSha) {
+        case SHA256: return SHA256Reset((SHA256Context*)&ctx->ctx);
+#ifndef EXCLUDE_ALL_SHAS_BUT_256
         case SHA1:   return SHA1Reset((SHA1Context*)&ctx->ctx);
         case SHA224: return SHA224Reset((SHA224Context*)&ctx->ctx);
-        case SHA256: return SHA256Reset((SHA256Context*)&ctx->ctx);
         case SHA384: return SHA384Reset((SHA384Context*)&ctx->ctx);
         case SHA512: return SHA512Reset((SHA512Context*)&ctx->ctx);
+#endif
         default: return shaBadParam;
         }
     }
@@ -70,13 +73,14 @@ int USHAInput(USHAContext *ctx,
 {
     if (ctx) {
         switch (ctx->whichSha) {
+        case SHA256:
+            return SHA256Input((SHA256Context*)&ctx->ctx, bytes,
+                bytecount);
+#ifndef EXCLUDE_ALL_SHAS_BUT_256
         case SHA1:
             return SHA1Input((SHA1Context*)&ctx->ctx, bytes, bytecount);
         case SHA224:
             return SHA224Input((SHA224Context*)&ctx->ctx, bytes,
-                bytecount);
-        case SHA256:
-            return SHA256Input((SHA256Context*)&ctx->ctx, bytes,
                 bytecount);
         case SHA384:
             return SHA384Input((SHA384Context*)&ctx->ctx, bytes,
@@ -84,6 +88,7 @@ int USHAInput(USHAContext *ctx,
         case SHA512:
             return SHA512Input((SHA512Context*)&ctx->ctx, bytes,
                 bytecount);
+#endif
         default: return shaBadParam;
         }
     }
@@ -116,13 +121,14 @@ const uint8_t bits, unsigned int bitcount)
 {
     if (ctx) {
         switch (ctx->whichSha) {
+        case SHA256:
+            return SHA256FinalBits((SHA256Context*)&ctx->ctx, bits,
+                bitcount);
+#ifndef EXCLUDE_ALL_SHAS_BUT_256
         case SHA1:
             return SHA1FinalBits((SHA1Context*)&ctx->ctx, bits, bitcount);
         case SHA224:
             return SHA224FinalBits((SHA224Context*)&ctx->ctx, bits,
-                bitcount);
-        case SHA256:
-            return SHA256FinalBits((SHA256Context*)&ctx->ctx, bits,
                 bitcount);
         case SHA384:
             return SHA384FinalBits((SHA384Context*)&ctx->ctx, bits,
@@ -130,6 +136,7 @@ const uint8_t bits, unsigned int bitcount)
         case SHA512:
             return SHA512FinalBits((SHA512Context*)&ctx->ctx, bits,
                 bitcount);
+#endif
         default: return shaBadParam;
         }
     }
@@ -162,16 +169,18 @@ int USHAResult(USHAContext *ctx,
 {
     if (ctx) {
         switch (ctx->whichSha) {
+        case SHA256:
+            return SHA256Result((SHA256Context*)&ctx->ctx, Message_Digest);
+#ifndef EXCLUDE_ALL_SHAS_BUT_256
         case SHA1:
             return SHA1Result((SHA1Context*)&ctx->ctx, Message_Digest);
         case SHA224:
             return SHA224Result((SHA224Context*)&ctx->ctx, Message_Digest);
-        case SHA256:
-            return SHA256Result((SHA256Context*)&ctx->ctx, Message_Digest);
         case SHA384:
             return SHA384Result((SHA384Context*)&ctx->ctx, Message_Digest);
         case SHA512:
             return SHA512Result((SHA512Context*)&ctx->ctx, Message_Digest);
+#endif
         default: return shaBadParam;
         }
     }

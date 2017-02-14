@@ -8,3 +8,7 @@
 /devdoc/~$o_requirements.docm
 /.vscode
 *.jar
+[Dd]ebug/
+[Rr]elease/
+/inc/[Dd]river[Ll]ib/
+

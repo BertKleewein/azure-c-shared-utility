@@ -21,12 +21,17 @@
 #include "azure_c_shared_utility/vector.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+#if (defined DEBUG) && (defined __MSP430FR5969__)
+#define LOG_AT_COMMANDS 1
+#endif 
+
 typedef enum ATRPC_STATUS_TAG
 {
-    ATRPC_CLOSED,
-    ATRPC_HANDSHAKING,
-    ATRPC_NEGOTIATING_AUTOBAUD,
-    ATRPC_OPEN,
+    ATRPC_CLOSED,                       // Connection is closed.
+    ATRPC_ATMODE_READY,                 // Device is in AT mode and ready to receive response
+    ATRPC_AWAITING_AUTOBAUD_RESPONSE,   // Autobaud is being negotiated
+    ATRPC_ATMODE_AWAITING_ECHO,         // Client is awaiting the echo of the AT command
+    ATRPC_ATMODE_AWAITING_RESPONSE,     // Client is awaiting the response of the AT command
 } ATRPC_STATUS;
 
 typedef enum MODEM_IO_STATUS_TAG 
@@ -38,19 +43,19 @@ typedef enum MODEM_IO_STATUS_TAG
 
 typedef struct ATRPC_INSTANCE_TAG 
 {
-    bool awaiting_echo;
     tickcounter_ms_t call_origination_ms;
     unsigned char * current_request;
     size_t current_request_length;
     size_t echo_machine_state;
     size_t handshake_attempt;
     size_t handshake_machine_state;
+    bool handshake_complete;
     XIO_HANDLE modem_io;
     bool modem_receiving;
     MODEM_IO_STATUS modem_status;
-    ON_OPEN_COMPLETE on_open_complete;
+    ON_ATRPC_OPEN_COMPLETE on_open_complete;
     void * on_open_complete_context;
-    ON_TA_RESPONSE on_ta_response;
+    ON_ATRPC_TA_RESPONSE on_ta_response;
     void * on_ta_response_context;
     unsigned char * response_buffer;
     size_t ta_response_buffer_allocated_size;
@@ -62,7 +67,15 @@ typedef struct ATRPC_INSTANCE_TAG
     size_t ta_result_code_machine_state;
     TICK_COUNTER_HANDLE tick_counter;
     size_t timeout_ms;
+    ON_ATRPC_RAW_DATA_RECEIVED on_raw_data_received;
+    void *on_raw_data_received_context;
+    ON_ATRPC_SEND_RAW_DATA_COMPLETE on_raw_data_send_complete;
+    void *on_raw_data_send_complete_context;
+    
 } ATRPC_INSTANCE;
+
+#define UART_BAUDRATE 9600
+#define UART_RINGBUFFER_SIZE 32 // BKTODO: remove
 
 static bool autobaud_negotiation_machine (ATRPC_HANDLE handle_, unsigned char byte_)
 {
@@ -200,13 +213,87 @@ static bool autobaud_negotiation_machine (ATRPC_HANDLE handle_, unsigned char by
     return response_complete;
 }
 
+static bool at_response_machine (ATRPC_HANDLE handle_, unsigned char byte_)
+{
+    ATRPC_INSTANCE *atrpc = (ATRPC_INSTANCE*)handle_;
+    bool response_complete = false;
+    
+    if (atrpc->ta_response_buffer_index < atrpc->ta_response_buffer_allocated_size)
+    {
+        atrpc->response_buffer[atrpc->ta_response_buffer_index++] = byte_;
+    }
+    if (NULL != atrpc->ta_result_code_parser) 
+    {
+        /* Codes_SRS_ATRPC_27_081: [ When a CUSTOM_RESULT_CODE_PARSER callback is supplied to attention(), modem_on_bytes_received() shall call the callback with each byte to determine the end of a response instead of searching for a standard result code. ] */
+        response_complete = atrpc->ta_result_code_parser(atrpc->ta_result_code_parser_context, byte_, &atrpc->ta_result_code);
+    } 
+    else 
+    {
+        switch (atrpc->ta_result_code_machine_state)
+        {
+          case 0:
+            if ('\r' == byte_)
+            {
+                atrpc->ta_result_code_machine_state = 1;
+            }
+            break;
+          case 1:
+            // Accept all valid result codes
+            if (0x35 != byte_ && 0x30 <= byte_ && 0x39 >= byte_)
+            {
+                atrpc->ta_result_code = (TA_RESULT_CODE)(byte_ - 0x30);
+                atrpc->ta_result_code_machine_state = 2;
+            }
+            else if ('\r' == byte_)
+            {
+                /* defer */
+            }
+            else if ('\n' == byte_)
+            {
+                atrpc->ta_result_code_machine_state = 3;
+            }
+            else
+            {
+                atrpc->ta_result_code_machine_state = 0;
+            }
+            break;
+          case 2:
+            if ('\r' == byte_)
+            {
+                response_complete = true;
+            }
+            atrpc->ta_result_code_machine_state = 0;
+            break;
+          case 3:
+            // Accept all valid result codes
+            if (0x35 != byte_ && 0x30 <= byte_ && 0x39 >= byte_)
+            {
+                atrpc->ta_result_code = (TA_RESULT_CODE)(byte_ - 0x30);
+                atrpc->ta_result_code_machine_state = 2;
+            }
+            else if ('\r' == byte_)
+            {
+                atrpc->ta_result_code_machine_state = 1;
+            }
+            else
+            {
+                atrpc->ta_result_code_machine_state = 0;
+            }
+            break;
+          default:
+            break;
+        }
+    }
+
+    return response_complete;
+}
 
 static void clear_current_request (ATRPC_HANDLE handle_)
 {
     free(handle_->current_request);
+    handle_->status = ATRPC_ATMODE_READY;
     handle_->current_request = NULL;
     handle_->current_request_length = 0;
-    handle_->awaiting_echo = true;
     handle_->timeout_ms = 0;
 
     return;
@@ -243,12 +330,12 @@ static void modem_handshake (void * context_, TA_RESULT_CODE result_code_, const
             break;
         }
 
-        if (50 < atrpc->handshake_attempt)
+        if (10 < atrpc->handshake_attempt)
         {
             LogError("Failed to negotiate handshake before exhausting maximum allowed time-outs!");
             /* Codes_SRS_ATRPC_27_065: [ During auto-baud negotiation, if 50 or more time-outs occur, then modem_handshake() shall call the (void)on_open_complete(void * context, ta_result_code result_code, char * response) callback provided to atrpc_open(), using the on_open_complete_context argument provided to atrpc_open() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the response parameter. ] */
             atrpc->handshake_attempt = 0;
-            atrpc->on_open_complete(atrpc->on_open_complete_context, ERROR_ATRPC);
+            atrpc->on_open_complete(atrpc->on_open_complete_context, ERROR_AUTOBAUD);
         }
         else
         {
@@ -266,6 +353,7 @@ static void modem_handshake (void * context_, TA_RESULT_CODE result_code_, const
                     /* Codes_SRS_ATRPC_27_057: [ If atrpc_attention() returns a non-zero value, then on_io_open_complete() shall call the on_open_complete callback passed to atrpc_open() using the on_open_complete_context parameter passed to atrpc_open() as the context parameter, "ERROR_3GPP" as the result_code parameter, and "NULL" as the response parameter. ] */
                     atrpc->on_open_complete(atrpc->on_open_complete_context, ERROR_ATRPC);
                 }
+                atrpc->status = ATRPC_AWAITING_AUTOBAUD_RESPONSE;
                 break;
               case 1:
                 // Normalize terminal adapter responses by sending "ATE1V0\r"
@@ -289,7 +377,7 @@ static void modem_handshake (void * context_, TA_RESULT_CODE result_code_, const
                 break;
               case 3:
                 LogInfo("Handshake successful!");
-                atrpc->status = ATRPC_OPEN;
+                atrpc->handshake_complete = true;
                 /* Codes_SRS_ATRPC_27_066: [ Once the profile has been successfully stored, then modem_on_bytes_received() shall call the (void)on_open_complete(void * context, ta_result_code result_code, char * response) callback provided to atrpc_open(), using the on_open_complete_context argument provided to atrpc_open() as the context parameter, 3GPP_OK as the result_code parameter, and NULL as the response parameter. ] */
                 atrpc->on_open_complete(atrpc->on_open_complete_context, OK_3GPP);
                 break;
@@ -306,7 +394,9 @@ static void modem_on_bytes_received (void * context_, const unsigned char * buff
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_bytes_received()!");
-    } else {
+    } 
+    else 
+    {
         if (ATRPC_CLOSED == atrpc->status)
         {
             /* Codes_SRS_ATRPC_27_052: [ If atrpc_open() has not been called on the handle (passed in the callback context), then modem_on_bytes_received() shall discard all bytes. ] */
@@ -315,30 +405,40 @@ static void modem_on_bytes_received (void * context_, const unsigned char * buff
         {
             bool response_complete = false;
             size_t index = 0;
+            
+            if (NULL != atrpc->on_raw_data_received)
+            {   
+                atrpc->on_raw_data_received(atrpc->on_raw_data_received_context, buffer_, size_);
+            }
+
             for (; index < size_ && !response_complete; ++index)
             {
                 unsigned char received_byte = buffer_[index];
 
-                if (ATRPC_NEGOTIATING_AUTOBAUD == atrpc->status)
+                switch(atrpc->status)
                 {
-                    response_complete = autobaud_negotiation_machine(context_, buffer_[index]);
-                    if ( response_complete )
+                    case ATRPC_AWAITING_AUTOBAUD_RESPONSE:
                     {
-                        atrpc->status = ATRPC_HANDSHAKING;
-                        atrpc->ta_result_code = OK_3GPP;
+                        response_complete = autobaud_negotiation_machine(context_, buffer_[index]);
+                        if ( response_complete )
+                        {
+                            atrpc->ta_result_code = OK_3GPP;
+                        }
+                        break;
                     }
-                }
-                else
-                {
-                    /* Codes_SRS_ATRPC_27_053: [ If the `on_open_complete()` callback has been called, then `modem_on_bytes_received()` shall store any bytes following the prefix of the `command_string` parameter passed to `attention()` along with the postfixed `<result code>"\r"` in the buffer supplied to `attention()`. ] */
-                    if (atrpc->awaiting_echo)
+                    case ATRPC_ATMODE_READY:
+                    {
+                        // If we're not waiting, ignore it.
+                        break;
+                    }
+                    case ATRPC_ATMODE_AWAITING_ECHO:
                     {
                         if (atrpc->current_request[atrpc->echo_machine_state] == received_byte)
                         {
                             ++atrpc->echo_machine_state;
                             if (atrpc->current_request_length == atrpc->echo_machine_state)
                             {
-                                atrpc->awaiting_echo = false;
+                                atrpc->status = ATRPC_ATMODE_AWAITING_RESPONSE;
                                 atrpc->echo_machine_state = 0;
                                 atrpc->ta_response_buffer_index = 0;
                                 atrpc->ta_result_code_machine_state = 1;
@@ -348,79 +448,22 @@ static void modem_on_bytes_received (void * context_, const unsigned char * buff
                         {
                             atrpc->echo_machine_state = 0;
                         }
+                        break;
                     }
-                    else
+                    case ATRPC_ATMODE_AWAITING_RESPONSE:
                     {
-                        if (atrpc->ta_response_buffer_index < atrpc->ta_response_buffer_allocated_size)
-                        {
-                            atrpc->response_buffer[atrpc->ta_response_buffer_index++] = received_byte;
-                        }
-                        if (NULL != atrpc->ta_result_code_parser) {
-                            /* Codes_SRS_ATRPC_27_081: [ When a CUSTOM_RESULT_CODE_PARSER callback is supplied to attention(), modem_on_bytes_received() shall call the callback with each byte to determine the end of a response instead of searching for a standard result code. ] */
-                            response_complete = atrpc->ta_result_code_parser(atrpc->ta_result_code_parser_context, received_byte, &atrpc->ta_result_code);
-                        } else {
-                            switch (atrpc->ta_result_code_machine_state)
-                            {
-                              case 0:
-                                if ('\r' == received_byte)
-                                {
-                                    atrpc->ta_result_code_machine_state = 1;
-                                }
-                                break;
-                              case 1:
-                                // Accept all valid result codes
-                                if (0x35 != received_byte && 0x30 <= received_byte && 0x39 >= received_byte)
-                                {
-                                    atrpc->ta_result_code = (TA_RESULT_CODE)(received_byte - 0x30);
-                                    atrpc->ta_result_code_machine_state = 2;
-                                }
-                                else if ('\r' == received_byte)
-                                {
-                                    /* defer */
-                                }
-                                else if ('\n' == received_byte)
-                                {
-                                    atrpc->ta_result_code_machine_state = 3;
-                                }
-                                else
-                                {
-                                    atrpc->ta_result_code_machine_state = 0;
-                                }
-                                break;
-                              case 2:
-                                if ('\r' == received_byte)
-                                {
-                                    response_complete = true;
-                                }
-                                atrpc->ta_result_code_machine_state = 0;
-                                break;
-                              case 3:
-                                // Accept all valid result codes
-                                if (0x35 != received_byte && 0x30 <= received_byte && 0x39 >= received_byte)
-                                {
-                                    atrpc->ta_result_code = (TA_RESULT_CODE)(received_byte - 0x30);
-                                    atrpc->ta_result_code_machine_state = 2;
-                                }
-                                else if ('\r' == received_byte)
-                                {
-                                    atrpc->ta_result_code_machine_state = 1;
-                                }
-                                else
-                                {
-                                    atrpc->ta_result_code_machine_state = 0;
-                                }
-                                break;
-                              default:
-                                break;
-                            }
-                        }
+                        response_complete = at_response_machine(context_, buffer_[index]);
+                        break;
                     }
-                }
+               }
                 if (response_complete)
                 {
                     /* Codes_SRS_ATRPC_27_060: [ Once a complete response has been received, then modem_on_bytes_received() shall free the stored command string. ] */
                     clear_current_request(atrpc);
-                                                 
+
+#ifdef LOG_AT_COMMANDS
+                    printf("AT received %d \"%.*s\"\n", atrpc->ta_result_code, atrpc->ta_response_buffer_index, atrpc->ta_response_buffer_index == 0 ? "" : (char *)atrpc->response_buffer);
+#endif // LOG_AT_COMMANDS
                     /* Codes_SRS_ATRPC_27_054: [ If any bytes where captured, `modem_on_bytes_received()` shall call the `ta_response` callback passed to `attention()` using the `ta_response_context` as the `context` parameter, the captured result code as the `result_code` parameter, a pointer to the buffer as the `message` parameter, and the size of the received message as size. ] */
                     atrpc->on_ta_response(atrpc->on_ta_response_context, atrpc->ta_result_code, atrpc->response_buffer, atrpc->ta_response_buffer_index);
                 }
@@ -450,7 +493,7 @@ static void modem_on_io_close_complete (void * context_)
 
 static void modem_on_io_error (void * context_)
 {
-    ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
+//    ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
     if (NULL == context_)
     {
@@ -459,16 +502,21 @@ static void modem_on_io_error (void * context_)
     else
     {
         LogError("XIO buffer error!");
+#if 0
+        // BKTODO: error handling -- this error is transient so we should ignore it, right?  Or maybe just the first one?
         /* Codes_SRS_ATRPC_27_068: [ on_io_error() shall free the stored command string. ] */
         clear_current_request(atrpc);
+        // TODO: do we set error status?
 
         /* Codes_SRS_ATRPC_27_069: [ on_io_error() shall call the terminal adapter response callback passed as ta_response to attention() using the ta_response_context parameter passed to attention() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the message parameter. ] */
         atrpc->on_ta_response(atrpc->on_ta_response_context, ERROR_ATRPC, NULL, 0);
+#endif
     }
     return;
 }
 
 
+// BKTODO; error when outoing buffer is full
 static void modem_on_io_open_complete (void * context_, IO_OPEN_RESULT open_result_)
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
@@ -484,6 +532,7 @@ static void modem_on_io_open_complete (void * context_, IO_OPEN_RESULT open_resu
             LogError("Unable to open underlying xio!");
             atrpc->handshake_attempt = 0;
             atrpc->handshake_machine_state = 0;
+            atrpc->handshake_complete = false;
             atrpc->modem_status = MODEM_IO_CLOSED;
             atrpc->status = ATRPC_CLOSED;
             /* Codes_SRS_ATRPC_27_070: [ If the open_result parameter is not IO_OPEN_OK, then on_io_open_complete() shall call the on_open_complete callback passed to atrpc_open() using the on_open_complete_context parameter passed to atrpc_open() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the response parameter. ] */
@@ -511,15 +560,19 @@ static void modem_on_send_complete (void * context_, IO_SEND_RESULT send_result_
     }
     else
     {
-        atrpc->modem_receiving = false;
+
         if (IO_SEND_OK != send_result_)
         {
             LogError("Unable to send via underlying xio!");
+            // TODO: 27_060 appears to overlap with 27_075
             /* Codes_SRS_ATRPC_27_075: [ If the result of underlying xio on_io_send_complete() is not IO_SEND_OK, then on_send_complete() shall free the command string passed to attention(). ] */
             clear_current_request(atrpc);
 
             /* Codes_SRS_ATRPC_27_074: [ If the result of underlying xio on_io_send_complete() is IO_SEND_CANCELLED, then on_send_complete() shall call the terminal adapter response callback passed as ta_response to attention() using the ta_response_context parameter passed to attention() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the message parameter. ] */
             /* Codes_SRS_ATRPC_27_076: [ If the result of underlying xio on_io_send_complete() is IO_SEND_ERROR, then on_send_complete() shall call the terminal adapter response callback passed as ta_response to attention() using the ta_response_context parameter passed to attention() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the message parameter. ] */
+#ifdef LOG_AT_COMMANDS
+            printf("AT IO Error\n");
+#endif // LOG_AT_COMMANDS
             atrpc->on_ta_response(atrpc->on_ta_response_context, ERROR_ATRPC, NULL, 0);
         }
         else
@@ -531,44 +584,50 @@ static void modem_on_send_complete (void * context_, IO_SEND_RESULT send_result_
 }
 
 
-int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_, size_t command_string_length_, size_t timeout_ms_, unsigned char * ta_response_buffer_, size_t ta_response_buffer_size_, ON_TA_RESPONSE on_ta_response_, void * on_ta_response_context_, CUSTOM_TA_RESULT_CODE_PARSER ta_result_code_parser_, void * ta_result_code_parser_context_)
+int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_, size_t command_string_length_, size_t timeout_ms_, unsigned char * ta_response_buffer_, size_t ta_response_buffer_size_, ON_ATRPC_TA_RESPONSE on_ta_response_, void * on_ta_response_context_, CUSTOM_TA_RESULT_CODE_PARSER ta_result_code_parser_, void * ta_result_code_parser_context_)
 {
     int result;
+
+    // BKTODO: make sure we're not in data receive mode.  If so, cancel?  I think so,
+    
+#ifdef LOG_AT_COMMANDS
+    printf("AT sending \"%.*s\"\n", command_string_length_, command_string_length_ == 0 ? "" : (const char*)command_string_);
+#endif
 
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_000: [ If the handle argument is NULL, then atrpc_attention() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("NULL handle passed to atrpc_attention()!");
     }
     else if (NULL == on_ta_response_)
     {
         /* Codes_SRS_ATRPC_27_001: [ If the on_ta_response argument is NULL, then atrpc_attention() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("NULL callback passed to atrpc_attention()!");
     }
     else if (0 != command_string_length_ && NULL == command_string_)
     {
         /* Codes_SRS_ATRPC_27_085: [ If `command_string_length` is not zero and `command_string` is `NULL`, then `atrpc_attention()` shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("Previous call to atrpc_attention() has not returned!");
     }
     else if (0 != ta_response_buffer_size_ && NULL == ta_response_buffer_)
     {
         /* Codes_SRS_ATRPC_27_086: [ If `ta_response_buffer_size` is not zero and `response_buffer` is not `NULL`, then `atrpc_attention()` shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("Previous call to atrpc_attention() has not returned!");
     }
     else if (MODEM_IO_OPEN != handle_->modem_status)
     {
         /* Codes_SRS_ATRPC_27_002: [ If the on_io_open_complete() callback from the underlying xio has not been called, then atrpc_attention() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("atrpc_attention() unable to send - underlying XIO is not open!");
     }
     else if (NULL != handle_->current_request)
     {
         /* Codes_SRS_ATRPC_27_003: [ If a command is currently outstanding, then atrpc_attention() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("Previous call to atrpc_attention() has not returned!");
     }
     else
@@ -579,14 +638,14 @@ int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_
         if (0 != tickcounter_get_current_ms(handle_->tick_counter, &handle_->call_origination_ms))
         {
             /* Codes_SRS_ATRPC_27_005: [ If the call to tickcounter_get_current_ms() returns a non-zero value, then atrpc_attention() shall fail and return a non-zero value. ] */
-            result = __LINE__;
+            result = __FAILURE__;
             LogError("atrpc_attention() unable to timestamp the transaction!");
         /* Codes_SRS_ATRPC_27_006: [ atrpc_attention() store the command string, by calling (void *)malloc(size_t size) using (command_string_length + 3) for the size parameter. ] */
         }
         else if (NULL == (handle_->current_request = malloc(handle_->current_request_length)))
         {
             /* Codes_SRS_ATRPC_27_007: [ If the call to malloc() returns NULL, then atrpc_attention() shall fail and return a non-zero value. ] */
-            result = __LINE__;
+            result = __FAILURE__;
             LogError("atrpc_attention() unable to store request string!");
         }
         else
@@ -596,7 +655,6 @@ int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_
             handle_->current_request[1] = 'T';
             (void)memcpy(&handle_->current_request[2], command_string_, command_string_length_);
             handle_->current_request[(handle_->current_request_length - 1)] = '\r';
-            handle_->modem_receiving = true;
             handle_->on_ta_response = on_ta_response_;
             handle_->on_ta_response_context = on_ta_response_context_;
             handle_->response_buffer = ta_response_buffer_;
@@ -608,16 +666,15 @@ int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_
             if (0 != xio_send(handle_->modem_io, handle_->current_request, handle_->current_request_length, modem_on_send_complete, handle_))
             {
                 /* Codes_SRS_ATRPC_27_009: [ If the call to xio_send() returns a non-zero value, then atrpc_attention() shall fail and return a non-zero value. ] */
-                result = __LINE__;
+                result = __FAILURE__;
                 /* Codes_SRS_ATRPC_27_012: [ VALGRIND - If the call to xio_send() returns a non-zero value, then the stored command string shall be freed. ] */
                 clear_current_request(handle_);
-                handle_->modem_receiving = false;
                 LogError("atrpc_attention() failed to send request to underlying xio!");
             }
             else
             {
                 /* Codes_SRS_ATRPC_27_010: [ atrpc_attention() shall block until the on_send_complete callback passed to xio_send() returns. ] */
-                assert(!handle_->modem_receiving);
+                handle_->status = ATRPC_ATMODE_AWAITING_ECHO;
 
                 /* Codes_SRS_ATRPC_27_011: [ If no errors are encountered during execution, then atrpc_attention() shall return 0. ] */
                 result = 0;
@@ -635,7 +692,7 @@ int atrpc_close (ATRPC_HANDLE handle_)
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_013: [ If the handle argument is NULL, then atrpc_close() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("NULL handle passed to atrpc_close()!");
     }
     else if (ATRPC_CLOSED == handle_->status)
@@ -648,7 +705,7 @@ int atrpc_close (ATRPC_HANDLE handle_)
     else if (0 != xio_close(handle_->modem_io, modem_on_io_close_complete, handle_))
     {
         /* Codes_SRS_ATRPC_27_017: [ If the call to xio_close() returns a non-zero value, then atrpc_close() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("atrpc_close() unable to close underlying xio!");
     }
     else
@@ -658,12 +715,6 @@ int atrpc_close (ATRPC_HANDLE handle_)
         for (;MODEM_IO_CLOSED != handle_->modem_status;)
         {
             xio_dowork(handle_->modem_io);
-        }
-
-        if (ATRPC_NEGOTIATING_AUTOBAUD == handle_->status || ATRPC_HANDSHAKING == handle_->status)
-        {
-            /* Codes_SRS_ATRPC_27_015: [ If atrpc_open() has been called on the handle and the on_open_complete callback has not been called, atrpc_close() shall call the (void)on_open_complete(void * context, ta_result_code result_code, char * response) callback provided to atrpc_open(), using the on_open_complete_context argument provided to atrpc_open() as the context parameter, and ERROR_ATRPC as the result_code parameter. ] */
-            handle_->on_open_complete(handle_->on_open_complete_context, ERROR_ATRPC);
         }
 
         handle_->status = ATRPC_CLOSED;
@@ -679,7 +730,7 @@ ATRPC_HANDLE atrpc_create (void)
 {
     ATRPC_HANDLE result;
     const IO_INTERFACE_DESCRIPTION * xio_ifc;
-    const UARTIO_CONFIG xio_config = {9600, 8};
+    const UARTIO_CONFIG xio_config = {UART_BAUDRATE, UART_RINGBUFFER_SIZE};
 
     /* Codes_SRS_ATRPC_27_020: [ atrpc_create() shall call malloc() to allocate the memory required for the internal data structure. ] */
     if (NULL == (result = (ATRPC_INSTANCE *)calloc(sizeof(ATRPC_INSTANCE), sizeof(unsigned char))))
@@ -716,6 +767,7 @@ ATRPC_HANDLE atrpc_create (void)
     else
     {
         // Additional configuration
+        result->on_raw_data_received =NULL;
     }
 
     /* Codes_SRS_ATRPC_27_030: [ VALGRIND - When atrpc_create() returns a non-zero value, all allocated resources up to that point shall be freed. ] */
@@ -793,32 +845,36 @@ void atrpc_dowork (ATRPC_HANDLE handle_)
             clear_current_request(handle_);
 
             LogInfo("atrpc_dowork() timed-out current AT RPC request.");
+#ifdef LOG_AT_COMMANDS
+            printf("AT TIMEOUT %d \"%.*s\"\n", handle_->ta_result_code, handle_->ta_response_buffer_index, handle_->ta_response_buffer_index == 0 ? "" : (char*)handle_->response_buffer);
+#endif
+
             /* Codes_SRS_ATRPC_27_045: [ If atrpc_open() has been called on the handle, and the timeout value sent as timeout_ms to the originating attention() call is non-zero and has expired, then atrpc_dowork() shall call the terminal adapter response callback passed as on_ta_response to attention() using the ta_response_context parameter passed to attention() as the context parameter, ERROR_ATRPC as the result_code parameter, and NULL as the message parameter. ] */
-            handle_->on_ta_response(handle_->on_ta_response_context, ERROR_ATRPC, NULL, 0);
+            handle_->on_ta_response(handle_->on_ta_response_context, TIMEOUT_ATRPC, NULL, 0);
         }
     }
 }
 
 
-int atrpc_open (ATRPC_HANDLE handle_, ON_OPEN_COMPLETE on_open_complete_, void * on_open_complete_context_)
+int atrpc_open (ATRPC_HANDLE handle_, ON_ATRPC_OPEN_COMPLETE on_open_complete_, void * on_open_complete_context_)
 {
     int result;
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_046: [ If the handle argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("NULL handle passed to atrpc_open()!");
     }
     else if (NULL == on_open_complete_)
     {
-        /* Codes_SRS_ATRPC_27_047: [ If the on_open_complete argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        /* Codes_SRS_ATRPC_27_047: [ If the on_open_complete argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] *sd
+        result = __FAILURE__;
         LogError("NULL callback passed to atrpc_open()!");
     }
     else if (ATRPC_CLOSED != handle_->status)
     {
         /* Codes_SRS_ATRPC_27_048: [ If atrpc_open() has been called previously and atrpc_close() has not been called on the handle, atrpc_open() shall fail and return a non-zero value. ] */
-        result = __LINE__;
+        result = __FAILURE__;
         LogError("atrpc_open() requested on active handle!");
     }
     /* Codes_SRS_ATRPC_27_049: [ atrpc_open() shall call (int)xio_open(XIO_HANDLE handle, ON_IO_OPEN_COMPLETE on_io_open_complete, void * on_io_open_complete_context, ON_BYTES_RECEIVED on_bytes_received, void * on_bytes_received_context, ON_IO_ERROR on_io_error, void * on_io_error_context) using the handle returned from xio_create() as the handle parameter, the incoming handle parameter as the on_bytes_received_context parameter, and the incoming handle parameter as the on_io_open_complete_context parameter. ] */
@@ -828,16 +884,17 @@ int atrpc_open (ATRPC_HANDLE handle_, ON_OPEN_COMPLETE on_open_complete_, void *
         handle_->echo_machine_state = 0;
         handle_->handshake_attempt = 0;
         handle_->handshake_machine_state = 0;
+        handle_->handshake_complete = false;
         handle_->modem_status = MODEM_IO_OPENING;
         handle_->on_open_complete = on_open_complete_;
         handle_->on_open_complete_context = on_open_complete_context_;
         handle_->ta_result_code_machine_state = 0;
-        handle_->status = ATRPC_NEGOTIATING_AUTOBAUD;
+        handle_->status = ATRPC_ATMODE_READY;
 
         if (0 != xio_open(handle_->modem_io, modem_on_io_open_complete, handle_, modem_on_bytes_received, handle_, modem_on_io_error, handle_))
         {
             /* Codes_SRS_ATRPC_27_050: [ If xio_open() returns a non-zero value, then atrpc_open() shall do nothing and return a non-zero value. ] */
-            result = __LINE__;
+            result = __FAILURE__;
             LogError("atrpc_open() failed to open underlying xio layer!");
         }
         else
@@ -853,6 +910,57 @@ int atrpc_open (ATRPC_HANDLE handle_, ON_OPEN_COMPLETE on_open_complete_, void *
         on_open_complete_(on_open_complete_context_, ERROR_ATRPC);
     }
 
+    return result;
+}
+
+int atrpc_set_raw_data_callback(ATRPC_HANDLE handle, ON_ATRPC_RAW_DATA_RECEIVED  on_raw_data_received, void *on_raw_data_received_context)
+{
+    // BKTODO: check handle and required args
+    
+    handle->on_raw_data_received = on_raw_data_received;
+    handle->on_raw_data_received_context = on_raw_data_received_context;
+
+    return 0;
+}
+
+static void on_internal_send_raw_data_complete (void * context, IO_SEND_RESULT send_result)
+{
+    ATRPC_INSTANCE *atrpc = (ATRPC_INSTANCE *)context;
+    switch(send_result)
+    {
+        case IO_OPEN_OK:
+            atrpc->on_raw_data_send_complete(atrpc->on_raw_data_send_complete_context);
+            break;
+        case IO_OPEN_ERROR:
+            LogError("xio_send failed with IO_OPEN_ERROR");
+            // BKTODO: call error callback.
+            break;
+        case IO_OPEN_CANCELLED:
+            LogError("xio_send failed with IO_OPEN_CANCELLED");
+            // BKTODO: call error callback
+            break;
+    }
+}
+
+int atrpc_send_raw_data(ATRPC_HANDLE handle, const unsigned char *data_buffer, size_t data_buffer_length, ON_ATRPC_SEND_RAW_DATA_COMPLETE on_raw_data_send_complete, void *on_raw_data_send_complete_context)
+{
+    int result;
+    // BKTODO check args
+    // BKTODO: make sure we're in data receive mode
+
+    handle->on_raw_data_send_complete = on_raw_data_send_complete;
+    handle->on_raw_data_send_complete_context = on_raw_data_send_complete_context;
+
+    if (0 != xio_send(handle->modem_io, data_buffer, data_buffer_length, on_internal_send_raw_data_complete, handle))
+    {
+        LogError("xio_send failed");
+        result = __FAILURE__;
+    }
+    else
+    {
+        result = 0;
+    }
+    
     return result;
 }
 

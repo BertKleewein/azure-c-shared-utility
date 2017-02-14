@@ -1,16 +1,12 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#include "azure_c_shared_utility/tickcounter_msp430.h"
+#include "tickcounter_msp430.h"
 
 #ifdef __cplusplus
   #include <cstdlib>
 #else
   #include <stdlib.h>
-#endif
-
-#ifdef _CRTDBG_MAP_ALLOC
-  #include <crtdbg.h>
 #endif
 
 #include <driverlib.h>
@@ -120,7 +116,7 @@ int timer_a3_init(void)
     // Update `timer_a3_ticks_per_second` with actual ticks per second
     // divided by the `.clockSourceDivider` value provided below
     if (minimum_Hz > (aclk_Hz = CS_getACLK())) {
-        error = __LINE__;
+        error = __FAILURE__;
     } else {
         timer_a3_ticks_per_second = (aclk_Hz >> 4);
         Timer_A_initContinuousModeParam param = {
@@ -143,9 +139,9 @@ int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_
     int error;
 
     if (NULL == tick_counter) {
-        error = __LINE__;
+        error = __FAILURE__;
     } else if (NULL == current_ms) {
-        error = __LINE__;
+        error = __FAILURE__;
     } else {
         system_ticks.timer_a.counter_value = Timer_A_getCounterValue(TIMER_A3_BASE);
         *current_ms = (now_ms() - *(tickcounter_ms_t *)tick_counter);

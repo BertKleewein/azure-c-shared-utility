@@ -19,7 +19,7 @@
 typedef struct UARTIO_CONFIG_TAG
 {
 	uint32_t baud_rate;
-	size_t ring_buffer_size;
+	size_t ring_buffer_size;        // must be a power of 2
 } UARTIO_CONFIG;
 
 MOCKABLE_FUNCTION(, const IO_INTERFACE_DESCRIPTION *, uartio_get_interface_description);

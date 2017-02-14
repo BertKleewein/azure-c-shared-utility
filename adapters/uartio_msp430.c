@@ -1,10 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#ifdef _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#endif
-
 #ifdef __cplusplus
   #include <cstdbool>
   #include <cstddef>
@@ -19,20 +15,18 @@
 
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/uartio.h"
+#include "azure_c_shared_utility/dmapingpong.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4068)
 #endif
 
+#define COUNTOF(x) (sizeof(x) / sizeof(x[0]))
+
 typedef struct UartIoState {
+    PingPongBuffer uart_rx_buffer;
+    PingPongBuffer uart_rxstatus_buffer;
     UARTIO_CONFIG config;
-    uint8_t * eusci_a1_cache_buffer;
-    uint8_t * eusci_a1_ring_buffer;
-    bool eusci_a1_ring_buffer_full;
-    size_t eusci_a1_ring_buffer_head;
-    bool eusci_a1_ring_buffer_overflow;
-    size_t eusci_a1_ring_buffer_tail;
-    uint8_t eusci_a1_rx_error;
     ON_BYTES_RECEIVED on_bytes_received;
     void * on_bytes_received_context;
     ON_IO_ERROR on_io_error;
@@ -128,38 +122,11 @@ static const IO_INTERFACE_DESCRIPTION _uartio_interface_description = {
 };
 #pragma diag_pop
 
-
-/******************************************************************************
- * Interrupt to signal SIM808 UART RX data is available
- ******************************************************************************/
-#pragma vector = USCI_A1_VECTOR
-__interrupt void USCI_A1_ISR(void)
-{
-    switch (__even_in_range(UCA1IV, 8))
-    {
-    case 0x00: break;
-    case 0x02:
-#pragma diag_push
-        /*
-         * (ULP 10.1) ISR USCI_A1_ISR calls function EUSCI_A_UART_queryStatusFlags.
-         *
-         * Recommend moving function call away from ISR, or inlining the function, or using pragmas
-         */
-#pragma diag_suppress 1538
-        _uartio.eusci_a1_rx_error |= EUSCI_A_UART_queryStatusFlags(EUSCI_A1_BASE, (EUSCI_A_UART_FRAMING_ERROR | EUSCI_A_UART_OVERRUN_ERROR | EUSCI_A_UART_PARITY_ERROR));
-        _uartio.eusci_a1_ring_buffer[_uartio.eusci_a1_ring_buffer_head] = EUSCI_A_UART_receiveData(EUSCI_A1_BASE);
-#pragma diag_pop
-        _uartio.eusci_a1_ring_buffer_overflow = _uartio.eusci_a1_ring_buffer_full;
-        _uartio.eusci_a1_ring_buffer_head = ((_uartio.config.ring_buffer_size - 1) & (_uartio.eusci_a1_ring_buffer_head + 1));
-        _uartio.eusci_a1_ring_buffer_full = ((_uartio.eusci_a1_ring_buffer_head == _uartio.eusci_a1_ring_buffer_tail) || _uartio.eusci_a1_ring_buffer_overflow);
-        break;
-    case 0x04: break;
-    case 0x06: break;
-    case 0x08: break;
-    default: __never_executed();
-    }
-}
-
+#define DMA_TRIGGERSOURCE_UART0_RX DMA_TRIGGERSOURCE_16 // From MSP430FR5969 datasheet.  Not in any headers
+#define DMA_CHANNEL_UART0_RX DMA_CHANNEL_0
+#define DMA_CHANNEL_UART0_RXSTATUS DMA_CHANNEL_1
+#define UART_REGISTER_RX EUSCI_A1_BASE + OFS_UCAxRXBUF
+#define UART_REGISTER_RXSTATUS  EUSCI_A1_BASE + OFS_UCAxSTATW
 
 /******************************************************************************
  * Calculate the secondary modulation register value
@@ -176,85 +143,59 @@ __interrupt void USCI_A1_ISR(void)
 static inline
 uint8_t
 secondModulationRegisterValueFromFractionalPortion (
-	float fractional_portion_
+    uint16_t fractional_portion
 ) {
-	uint8_t mask_UCBRSx;
+    uint8_t mask_UCBRSx = 0;
 
-	if ( fractional_portion_ >= 0.9288f ) {
-        mask_UCBRSx = 0xFE;  // 11111110
-	} else if ( fractional_portion_ >= 0.9170f ) {
-        mask_UCBRSx = 0xFD;  // 11111101
-	} else if ( fractional_portion_ >= 0.9004f ) {
-        mask_UCBRSx = 0xFB;  // 11111011
-	} else if ( fractional_portion_ >= 0.8751f ) {
-        mask_UCBRSx = 0xF7;  // 11110111
-	} else if ( fractional_portion_ >= 0.8572f ) {
-        mask_UCBRSx = 0xEF;  // 11101111
-	} else if ( fractional_portion_ >= 0.8464f ) {
-        mask_UCBRSx = 0xDF;  // 11011111
-	} else if ( fractional_portion_ >= 0.8333f ) {
-        mask_UCBRSx = 0xBF;  // 10111111
-	} else if ( fractional_portion_ >= 0.8004f ) {
-        mask_UCBRSx = 0xEE;  // 11101110
-	} else if ( fractional_portion_ >= 0.7861f ) {
-        mask_UCBRSx = 0xED;  // 11101101
-	} else if ( fractional_portion_ >= 0.7503f ) {
-        mask_UCBRSx = 0xDD;  // 11011101
-	} else if ( fractional_portion_ >= 0.7147f ) {
-        mask_UCBRSx = 0xBB;  // 10111011
-	} else if ( fractional_portion_ >= 0.7001f ) {
-        mask_UCBRSx = 0xB7;  // 10110111
-	} else if ( fractional_portion_ >= 0.6667f ) {
-        mask_UCBRSx = 0xD6;  // 11010110
-	} else if ( fractional_portion_ >= 0.6432f ) {
-        mask_UCBRSx = 0xB6;  // 10110110
-	} else if ( fractional_portion_ >= 0.6254f ) {
-        mask_UCBRSx = 0xB5;  // 10110101
-	} else if ( fractional_portion_ >= 0.6003f ) {
-        mask_UCBRSx = 0xAD;  // 10101101
-	} else if ( fractional_portion_ >= 0.5715f ) {
-        mask_UCBRSx = 0x6B;  // 01101011
-	} else if ( fractional_portion_ >= 0.5002f ) {
-        mask_UCBRSx = 0xAA;  // 10101010
-	} else if ( fractional_portion_ >= 0.4378f ) {
-        mask_UCBRSx = 0x55;  // 01010101
-	} else if ( fractional_portion_ >= 0.4286f ) {
-        mask_UCBRSx = 0x53;  // 01010011
-	} else if ( fractional_portion_ >= 0.4003f ) {
-        mask_UCBRSx = 0x92;  // 10010010
-	} else if ( fractional_portion_ >= 0.3753f ) {
-        mask_UCBRSx = 0x52;  // 01010010
-	} else if ( fractional_portion_ >= 0.3575f ) {
-        mask_UCBRSx = 0x4A;  // 01001010
-	} else if ( fractional_portion_ >= 0.3335f ) {
-        mask_UCBRSx = 0x49;  // 01001001
-	} else if ( fractional_portion_ >= 0.3000f ) {
-        mask_UCBRSx = 0x25;  // 00100101
-	} else if ( fractional_portion_ >= 0.2503f ) {
-        mask_UCBRSx = 0x44;  // 01000100
-	} else if ( fractional_portion_ >= 0.2224f ) {
-        mask_UCBRSx = 0x22;  // 00100010
-	} else if ( fractional_portion_ >= 0.2147f ) {
-        mask_UCBRSx = 0x21;  // 00100001
-	} else if ( fractional_portion_ >= 0.1670f ) {
-        mask_UCBRSx = 0x11;  // 00010001
-	} else if ( fractional_portion_ >= 0.1430f ) {
-        mask_UCBRSx = 0x20;  // 00100000
-	} else if ( fractional_portion_ >= 0.1252f ) {
-        mask_UCBRSx = 0x10;  // 00010000
-	} else if ( fractional_portion_ >= 0.1001f ) {
-        mask_UCBRSx = 0x08;  // 00001000
-	} else if ( fractional_portion_ >= 0.0835f ) {
-        mask_UCBRSx = 0x04;  // 00000100
-	} else if ( fractional_portion_ >= 0.0715f ) {
-        mask_UCBRSx = 0x02;  // 00000010
-	} else if ( fractional_portion_ >= 0.0529f ) {
-        mask_UCBRSx = 0x01;  // 00000001
-	} else {
-        mask_UCBRSx = 0x00;  // 00000000
-	}
+    static const uint16_t lookup[][2] = {
+        {9288, 0xFE},  // 11111110
+        {9170, 0xFD},  // 11111101
+        {9004, 0xFB},  // 11111011
+        {8751, 0xF7},  // 11110111
+        {8572, 0xEF},  // 11101111
+        {8464, 0xDF},  // 11011111
+        {8333, 0xBF},  // 10111111
+        {8004, 0xEE},  // 11101110
+        {7861, 0xED},  // 11101101
+        {7503, 0xDD},  // 11011101
+        {7147, 0xBB},  // 10111011
+        {7001, 0xB7},  // 10110111
+        {6667, 0xD6},  // 11010110
+        {6432, 0xB6},  // 10110110
+        {6254, 0xB5},  // 10110101
+        {6003, 0xAD},  // 10101101
+        {5715, 0x6B},  // 01101011
+        {5002, 0xAA},  // 10101010
+        {4378, 0x55},  // 01010101
+        {4286, 0x53},  // 01010011
+        {4003, 0x92},  // 10010010
+        {3753, 0x52},  // 01010010
+        {3575, 0x4A},  // 01001010
+        {3335, 0x49},  // 01001001
+        {3000, 0x25},  // 00100101
+        {2503, 0x44},  // 01000100
+        {2224, 0x22},  // 00100010
+        {2147, 0x21},  // 00100001
+        {1670, 0x11},  // 00010001
+        {1430, 0x20},  // 00100000
+        {1252, 0x10},  // 00010000
+        {1001, 0x08},  // 00001000
+        {835, 0x04},  // 00000100
+        {715, 0x02},  // 00000010
+        {529, 0x01},  // 00000001
+        {0, 0x00},  // 00000000
+    };
+    
+    for (uint16_t i = 0; i < COUNTOF(lookup); i++)
+    {
+        if (fractional_portion > lookup[i][0])
+        {
+            mask_UCBRSx = lookup[i][0];
+            break;
+        }
+    }
 
-	return mask_UCBRSx;
+    return mask_UCBRSx;
 }
 #pragma diag_pop
 
@@ -303,7 +244,7 @@ initializeEusciAParametersForSMClkAtBaudRate(
         mask_UCBRx = (uint16_t)factor_N;
         mask_UCBRFx = 0x00;
     }
-    mask_UCBRSx = secondModulationRegisterValueFromFractionalPortion(factor_N - (uint16_t)factor_N);
+    mask_UCBRSx = secondModulationRegisterValueFromFractionalPortion((uint16_t)((factor_N - (uint16_t)factor_N)*10000));
 #pragma diag_pop
 
     eusci_a_parameters_->selectClockSource = EUSCI_A_UART_CLOCKSOURCE_SMCLK;
@@ -346,19 +287,21 @@ uartio_close(
     int result;
 
     if (NULL == uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_close");
+        result = __FAILURE__;
     } else if (_singleton != uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_close");
+        result = __FAILURE__;
     } else if (NULL == on_io_close_complete_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_close");
+        result = __FAILURE__;
     } else if (!_uartio.open) {
-        result = __LINE__;
+        LogError("uart not open");
+        result = __FAILURE__;
     } else {
-        // Wait for outstanding UART transactions to complete
-        for (; 0x00 != EUSCI_A_UART_queryStatusFlags(EUSCI_A1_BASE, EUSCI_A_UART_BUSY););
-        EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
-        EUSCI_A_UART_disable(EUSCI_A1_BASE);
         _uartio.open = false;
+        pingpong_disable(&_uartio.uart_rx_buffer);
+        pingpong_disable(&_uartio.uart_rxstatus_buffer);
         on_io_close_complete_(callback_context_);
         result = 0;
     }
@@ -375,24 +318,27 @@ uartio_create(
     UartIoState * result;  // Errors encountered during `uartio_create()` should NOT affect static singleton
 
     if (NULL == io_create_parameters_) {
+        LogError("invalid arg to uartio_create");
         result = NULL;
     } else if (0 == uartio_config->baud_rate) {
+        LogError("invalid arg to uartio_create");
         result = NULL;
     } else if (0 == uartio_config->ring_buffer_size) {
+        LogError("invalid arg to uartio_create");
         result = NULL;
     } else if (NULL != _singleton) {
+        LogError("invalid arg to uartio_create");
         result = NULL;
-    // Confirm `uartio_config->ring_buffer_size` is a power of 2
-    } else if (0 != (uartio_config->ring_buffer_size & (uartio_config->ring_buffer_size - 1))) {
+    } else if (0 != pingpong_alloc(&_uartio.uart_rx_buffer)) {
+        LogError("pingpong_alloc failed");
         result = NULL;
-    } else if (NULL == (_uartio.eusci_a1_ring_buffer = (uint8_t *)malloc(uartio_config->ring_buffer_size))) {
-        result = NULL;
-    } else if (NULL == (_uartio.eusci_a1_cache_buffer = (uint8_t *)malloc(uartio_config->ring_buffer_size))) {
-        free(_uartio.eusci_a1_ring_buffer);
+    } else if (0 != pingpong_alloc(&_uartio.uart_rxstatus_buffer)) {
+        pingpong_free(&_uartio.uart_rx_buffer);
+        LogError("pingpong_alloc failed");
         result = NULL;
     } else {
         _uartio.config.baud_rate = uartio_config->baud_rate;
-        _uartio.config.ring_buffer_size = uartio_config->ring_buffer_size;
+        _uartio.config.ring_buffer_size = uartio_config->ring_buffer_size;  // BKTODO:remove
         _singleton = &_uartio;
         result = _singleton;
     }
@@ -412,9 +358,10 @@ uartio_destroy(
     } else {
         // Best effort close, cannot check error conditions
         (void)uartio_close(uartio_, internal_uarito_close_callback_required_when_closed_from_uartio_destroy, NULL);
+        pingpong_free(&_uartio.uart_rx_buffer);
+        pingpong_free(&_uartio.uart_rxstatus_buffer);
+        
         _singleton = NULL;
-        free(_uartio.eusci_a1_ring_buffer);
-        free(_uartio.eusci_a1_cache_buffer);
     }
 }
 
@@ -427,7 +374,8 @@ uartio_destroyoption(
     (void)option_name_, option_value_;
 }
 
-
+// BKTODO: get rid of _uartio, cast instead.
+// BKTODO: remove friggin underscored!
 void
 uartio_dowork(
     CONCRETE_IO_HANDLE uartio_
@@ -439,35 +387,49 @@ uartio_dowork(
     } else if (!_uartio.open) {
         LogError("Closed handle passed to uartio_dowork!");
     } else {
-        uint8_t error;
-        size_t index = 0;
+        if (pingpong_check_for_data(&_uartio.uart_rx_buffer))
+        {
+            uint8_t *rxBuffer, *rxStatusBuffer;
+            size_t rxSize, rxStatusSize;
 
-        // BEGIN CRITICAL SECTION
-        EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT); {
-            error = (_uartio.eusci_a1_ring_buffer_overflow | _uartio.eusci_a1_rx_error);
-            _uartio.eusci_a1_ring_buffer_overflow = false;
-            _uartio.eusci_a1_rx_error = 0x00;
+            // because we can't atomically disable both DMA channels, 
+            // there's a change that we'll get slightly out-of-sync if
+            // an interrupt happens between the disable calls.
+            // Since we have the status buffer just for error conditions,
+            // we don't care as long as we see it _sometime_.
+            // This is because a single error would abort the entire 
+            // transaction anyway.
 
-            if ( (_uartio.eusci_a1_ring_buffer_tail != _uartio.eusci_a1_ring_buffer_head)
-              || _uartio.eusci_a1_ring_buffer_full
-            ) {
-                // correct in case of overflow - OVERFLOW BYTES ARE LOST
-                if (_uartio.eusci_a1_ring_buffer_full) {
-                    _uartio.eusci_a1_ring_buffer_tail = _uartio.eusci_a1_ring_buffer_head;
+            // BKTODO; why is the rxstatus buffer always empty?
+            pingpong_disable(&_uartio.uart_rxstatus_buffer);
+            pingpong_disable(&_uartio.uart_rx_buffer);
+
+            pingpong_flipflop(&_uartio.uart_rx_buffer, &rxBuffer, &rxSize);
+            pingpong_flipflop(&_uartio.uart_rxstatus_buffer, &rxStatusBuffer, &rxStatusSize);
+
+            pingpong_enable(&_uartio.uart_rx_buffer);
+            pingpong_enable(&_uartio.uart_rxstatus_buffer);
+
+            uint8_t *p = rxStatusBuffer;
+            bool error = false;
+            for (size_t i = rxStatusSize; i != 0; i--)
+            {
+                if (*p & (EUSCI_A_UART_FRAMING_ERROR | EUSCI_A_UART_OVERRUN_ERROR | EUSCI_A_UART_PARITY_ERROR))
+                {
+                    error = true;
+                    break;
                 }
-
-                do {
-                    _uartio.eusci_a1_cache_buffer[index] = _uartio.eusci_a1_ring_buffer[_uartio.eusci_a1_ring_buffer_tail];
-                    _uartio.eusci_a1_ring_buffer_tail = ((_uartio.config.ring_buffer_size - 1) & (_uartio.eusci_a1_ring_buffer_tail + 1));
-                    ++index;
-                } while (_uartio.eusci_a1_ring_buffer_head != _uartio.eusci_a1_ring_buffer_tail);
             }
-            _uartio.eusci_a1_ring_buffer_full = false;
-        } EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
-        // END CRITICAL SECTION
 
-        if (0 != index) { _uartio.on_bytes_received(_uartio.on_bytes_received_context, _uartio.eusci_a1_cache_buffer, index); }
-        if (0x00 != error) { _uartio.on_io_error(_uartio.on_io_error_context); }
+            if (error)
+            {
+                _uartio.on_io_error(_uartio.on_io_error_context);
+            }
+            else
+            {
+                _uartio.on_bytes_received(_uartio.on_bytes_received_context, rxBuffer, rxSize);
+            }
+        }
     }
 }
 
@@ -493,17 +455,23 @@ uartio_open(
     int result;
 
     if (NULL == uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_open");
+        result = __FAILURE__;
     } else if (_singleton != uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_open");
+        result = __FAILURE__;
     } else if (NULL == on_io_open_complete_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_open");
+        result = __FAILURE__;
     } else if (NULL == on_bytes_received_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_open");
+        result = __FAILURE__;
     } else if (NULL == on_io_error_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_open");
+        result = __FAILURE__;
     } else if (_uartio.open) {
-        result = __LINE__;
+        LogError("uart already open");
+        result = __FAILURE__;
     } else {
         // Ensure the SMCLK is available to the UART module
         CS_enableClockRequest(CS_SMCLK);
@@ -512,19 +480,20 @@ uartio_open(
         EUSCI_A_UART_initParam eusci_a_parameters = { 0 };
         initializeEusciAParametersForSMClkAtBaudRate(&eusci_a_parameters, _uartio.config.baud_rate);
         if (!EUSCI_A_UART_init(EUSCI_A1_BASE, &eusci_a_parameters)) {
-            result = __LINE__;
+            result = __FAILURE__;
         } else {
-            _uartio.eusci_a1_ring_buffer_tail = _uartio.eusci_a1_ring_buffer_head;
-            _uartio.eusci_a1_ring_buffer_full = false;
-            _uartio.eusci_a1_ring_buffer_overflow = false;
-            _uartio.eusci_a1_rx_error = 0x00;
             _uartio.open = true;
             EUSCI_A_UART_enable(EUSCI_A1_BASE);
-            EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+            EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
             _uartio.on_bytes_received = on_bytes_received_;
             _uartio.on_bytes_received_context = on_bytes_received_context_;
             _uartio.on_io_error = on_io_error_;
             _uartio.on_io_error_context = on_io_error_context_;
+            
+            pingpong_attach_to_register(&_uartio.uart_rx_buffer, DMA_CHANNEL_UART0_RX, DMA_TRIGGERSOURCE_UART0_RX, UART_REGISTER_RX );
+            pingpong_attach_to_register(&_uartio.uart_rxstatus_buffer, DMA_CHANNEL_UART0_RXSTATUS, DMA_TRIGGERSOURCE_UART0_RX, UART_REGISTER_RXSTATUS);
+            pingpong_enable(&_uartio.uart_rx_buffer);
+            pingpong_enable(&_uartio.uart_rxstatus_buffer);
             result = 0;
         }
     }
@@ -563,17 +532,23 @@ uartio_send(
     int result;
 
     if (NULL == uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_send");
+        result = __FAILURE__;
     } else if (_singleton != uartio_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_send");
+        result = __FAILURE__;
     } else if (NULL == buffer_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_send");
+        result = __FAILURE__;
     } else if (0 == buffer_size_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_send");
+        result = __FAILURE__;
     } else if (NULL == on_send_complete_) {
-        result = __LINE__;
+        LogError("invalid arg to uartio_send");
+        result = __FAILURE__;
     } else if (!_uartio.open) {
-        result = __LINE__;
+        LogError("uart not open in uartio_send");
+        result = __FAILURE__;
     } else {
         size_t i = 0;
         uint8_t * buffer = (uint8_t *)buffer_;
@@ -595,6 +570,6 @@ uartio_setoption(
     const void * const option_value_
 ) {
     (void)uartio_, option_name_, option_value_;
-    return __LINE__;
+    return __FAILURE__;
 }
 

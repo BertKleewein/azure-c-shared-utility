@@ -5,6 +5,8 @@
 #define OPTIMIZE_SIZE_H
 
 #if (defined __MSP430FR5969__)
+    // BKTODO: EXCLUDE_ALL_SHAS_BUT_256 should be in makefile
+    #define EXCLUDE_ALL_SHAS_BUT_256    
     #define OPTIMIZE_RETURN_CODES
     #define NO_VERBOSE_OUTPUT
     #ifdef DEBUG
