@@ -45,9 +45,10 @@ typedef void(*LOGGER_LOG)(LOG_CATEGORY log_category, const char* file, const cha
 #define LogErrorWinHTTPWithGetLastErrorAsString(...)
 #define UNUSED(x) (void)(x)
 #elif (defined MINIMAL_LOGERROR)
+extern char *minimal_logmsg;
 #define LOG(...)
 #define LogInfo(...)
-#define LogError(...) printf("error %s: line %d\n",__FILE__,__LINE__);
+#define LogError(...) printf(minimal_logmsg,__FILE__,__LINE__);
 #define xlogging_get_log_function() NULL
 #define xlogging_set_log_function(...)
 #define LogErrorWinHTTPWithGetLastErrorAsString(...)

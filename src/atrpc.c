@@ -21,8 +21,8 @@
 #include "azure_c_shared_utility/vector.h"
 #include "azure_c_shared_utility/xlogging.h"
 
-#if (defined DEBUG) && (defined __MSP430FR5969__)
-#define LOG_AT_COMMANDS 1
+#if (defined DEBUG) && (defined __MSP430__)
+// #define LOG_AT_COMMANDS 1
 #endif 
 
 typedef enum ATRPC_STATUS_TAG

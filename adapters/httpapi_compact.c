@@ -35,7 +35,9 @@
 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
 #define RETRY_INTERVAL_IN_MICROSECONDS  100
 
+#if !defined(MINIMAL_LOGERROR) && !defined(NO_LOGGING)
 DEFINE_ENUM_STRINGS(HTTPAPI_RESULT, HTTPAPI_RESULT_VALUES)
+#endif
 
 typedef struct HTTP_HANDLE_DATA_TAG
 {

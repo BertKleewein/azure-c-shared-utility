@@ -4,8 +4,13 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/consolelogger.h"
 
-#ifndef NO_LOGGING
+#ifdef NO_LOGGING
 
+#elif (defined MINIMAL_LOGERROR)
+
+char *minimal_logmsg = "Error %s Line %d";
+
+#else
 
 #ifdef WINCE
 #include <stdarg.h>

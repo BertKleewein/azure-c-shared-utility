@@ -25,16 +25,15 @@
 
 #define COUNTOF(x) (sizeof(x)/sizeof(x[0]))
 
+#if (defined DEBUG) && (defined __MSP430__)
+// #define VERBOSE_MODEM_DEBUGGING 1
+#endif 
+
 // BKTODO: this is a singleton.  Could we support multiple connections?
 // BKTODO: can we use low power mode (DTR pin)?
 // BKTODO: we could set context and use that to make future connections faster
 
 
-/*
-+CIPSSL=1
-+SSLOPT=0,1
-+SSLOPT=1,1
-*/
 
 // Most AT commands respond with standard success/failure codes.  0 maps to "OK", 4 maps to "CME ERROR", etc.  
 // Some AT commands don't follow this pattern.  For these commands, we have a string TA parsers which map 
@@ -84,8 +83,7 @@ typedef uint8_t(*_RESPONSE_VERIFIER)(const uint8_t * ta_response, size_t ta_resp
 typedef struct SEQUENCE_STEP_TAG {
     const char *command_string;
     const size_t command_string_length;
-    tickcounter_ms_t retry_delay;
-    tickcounter_ms_t timeout;
+    uint16_t retry_delay;
     _RESPONSE_VERIFIER response_verifier;
     const uint8_t ta_parser;
 } SEQUENCE_STEP;
@@ -100,20 +98,19 @@ typedef enum {
 } SEQUENCE_ACTION;
 
 // BKTODO: how to record logs for post-mortem debugging?
-// BKTODO: timeout is always default.  remove this.
 // BKTODO: pack this in
 
 // To build our sequence lists, we build up layers of simple macros that define each step.
 // The macros that start with _ are meant to be used from other macros.
 #define _COMMAND(x) x, sizeof(x)-1  // hardcoded string command
 #define _CUSTOM_COMMAND(x) NULL, x  // custom command
-#define _TIMEOUT(x) x   // timeout, failure if we don't get AT echo within this time
-#define _DEFAULT_TIMEOUT_VALUE 1000 
-#define _DEFAULT_TIMEOUT() _TIMEOUT(_DEFAULT_TIMEOUT_VALUE) // use default timeout value
 #define _RETRY_DELAY(x) x   // delay between command failures.
 #define _RESPONSE_VERIFIER(x) x // function to verify the return string
 #define _TA_PARSER(x) x // parser function to handle custom TA codes
 #define _NO_TA_PARSER() _TA_PARSER(TA_PARSER_COUNT)
+
+// Default timeout on all actions
+#define DEFAULT_TIMEOUT 1000
 
 // In addition to fixed string steps, we also have custom comands.  These are strings which are built manually
 #define CC_SET_APN 1
@@ -126,7 +123,6 @@ typedef enum {
     { \
         _COMMAND(x), \
         _RETRY_DELAY(0), \
-        _DEFAULT_TIMEOUT(), \
         _RESPONSE_VERIFIER(NULL), \
         _NO_TA_PARSER() \
     }
@@ -135,7 +131,6 @@ typedef enum {
     { \
         _COMMAND(x), \
         _RETRY_DELAY(r), \
-        _DEFAULT_TIMEOUT(), \
         _RESPONSE_VERIFIER(NULL), \
         _NO_TA_PARSER() \
     }
@@ -144,7 +139,6 @@ typedef enum {
     { \
         _COMMAND(x), \
         _RETRY_DELAY(r), \
-        _DEFAULT_TIMEOUT(), \
         _RESPONSE_VERIFIER(v), \
         _NO_TA_PARSER() \
     }
@@ -153,7 +147,6 @@ typedef enum {
     { \
         _COMMAND(x), \
         _RETRY_DELAY(0), \
-        _DEFAULT_TIMEOUT(), \
         _RESPONSE_VERIFIER(NULL), \
         _TA_PARSER(p) \
     }
@@ -162,7 +155,6 @@ typedef enum {
     { \
         _CUSTOM_COMMAND(x), \
         _RETRY_DELAY(0), \
-        _DEFAULT_TIMEOUT(), \
         _RESPONSE_VERIFIER(NULL), \
         _NO_TA_PARSER() \
     }
@@ -386,7 +378,9 @@ static void on_atrpc_open_complete(void *handle, TA_RESULT_CODE result_code)
     {
         if ((result_code == ERROR_AUTOBAUD) && (cellchip->power_cycle_count < MAX_POWER_CYCLE_COUNT))
         {
+#ifdef VERBOSE_MODEM_DEBUGGING
             printf("cycling power to sim808\n");
+#endif
             atrpc_close(cellchip->atrpc);
             msp430_power_cycle_sim808();
             cellchip->power_cycle_count++;
@@ -742,7 +736,7 @@ static int enqueue_current_step(CELLCHIP_SIM808_INSTANCE *cellchip)
     else if (0 == atrpc_attention(cellchip->atrpc, 
             commandString, 
             commandStringLength, 
-            currentState->timeout, 
+            DEFAULT_TIMEOUT,
             cellchip->default_response_buffer, 
             sizeof(cellchip->default_response_buffer), 
             on_sequence_at_command_complete, 
@@ -822,7 +816,9 @@ static void on_sequence_at_command_complete(void * context, TA_RESULT_CODE resul
             }
             else
             {
+#ifdef VERBOSE_MODEM_DEBUGGING
                 printf("pausing before retry\n");
+#endif
                 tickcounter_ms_t now;
                 if (0 == tickcounter_get_current_ms(cellchip->tickcounter, &now))
                 {

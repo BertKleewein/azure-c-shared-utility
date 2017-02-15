@@ -8,7 +8,9 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/strings.h"
 
+#if !defined(MINIMAL_LOGERROR) && !defined(NO_LOGGING)
 DEFINE_ENUM_STRINGS(MAP_RESULT, MAP_RESULT_VALUES);
+#endif
 
 typedef struct MAP_HANDLE_DATA_TAG
 {

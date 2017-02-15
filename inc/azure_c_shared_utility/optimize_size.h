@@ -4,7 +4,7 @@
 #ifndef OPTIMIZE_SIZE_H
 #define OPTIMIZE_SIZE_H
 
-#if (defined __MSP430FR5969__)
+#if (defined __MSP430__)
     // BKTODO: EXCLUDE_ALL_SHAS_BUT_256 should be in makefile
     #define DONT_USE_UPLOADTOBLOB
     #define EXCLUDE_ALL_SHAS_BUT_256    

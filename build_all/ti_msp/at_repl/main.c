@@ -157,7 +157,7 @@ on_cellchip_open_complete (
           default:
             sim808->atrpc_open = false;
             sim808->atrpc_error = true;
-            printf("AT RPC failed to open with error: %u!\n", open_result_);
+            printf("AT RPC failed to open with error: %d!\n", open_result_);
             break;
         }
     }
@@ -249,9 +249,9 @@ atRepl (
     static CUSTOM_TA_RESULT_CODE_PARSER parser = NULL;
 
     (void)printf("|>>>> Begin REPL <<<<|\n");
-    (void)printf("MCLK (MCU) Hz: %lu\n", CS_getMCLK());
-    (void)printf("SMCLK (UART) Hz: %lu\n", CS_getSMCLK());
-    (void)printf("ACLK/%u (Timer A3) Hz: %lu\n", (1 << 4), (CS_getACLK() >> 4));
+    (void)printf("MCLK (MCU) Hz: %d\n", (unsigned int)(CS_getMCLK()));
+    (void)printf("SMCLK (UART) Hz: %d\n", (unsigned int)(CS_getSMCLK()));
+    (void)printf("ACLK/%d (Timer A3) Hz: %d\n", (1 << 4), (unsigned int)(CS_getACLK() >> 4));
     sim808->awaiting_response = true;
 
     for(;!sim808->atrpc_error;) {
@@ -321,7 +321,7 @@ onTaResponse (
     if ( !context_ ) { return; }
 
     if ( !response_ ) {
-        printf("Result Code: %u\n", result_code_);
+        printf("Result Code: %d\n", result_code_);
     } else {
         // NULL terminate string
         if ( response_size_ < OUTPUT_BUFFER_SIZE ) {
@@ -330,7 +330,7 @@ onTaResponse (
             response[OUTPUT_BUFFER_SIZE - 1] = '\0';
         }
 
-        printf("Response:\n%s\nResult Code: %u\n", response_, result_code_);
+        printf("Response:\n%s\nResult Code: %d\n", response_, result_code_);
     }
     sim808->awaiting_response = false;
 }
