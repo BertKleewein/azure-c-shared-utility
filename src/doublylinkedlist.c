@@ -3,6 +3,11 @@
 
 #include "azure_c_shared_utility/doublylinkedlist.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 void
 DList_InitializeListHead(
     PDLIST_ENTRY ListHead

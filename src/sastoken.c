@@ -13,6 +13,12 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
+
 static double getExpiryValue(const char* expiryASCII)
 {
     double value = 0;

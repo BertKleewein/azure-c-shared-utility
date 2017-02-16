@@ -9,6 +9,12 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/strings.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
+
 #define NIBBLE_STR(c) (char)(c < 10 ? c + '0' : c - 10 + 'a')
 #define IS_PRINTABLE(c) (                           \
     (c == 0) ||                                     \

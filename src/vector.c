@@ -9,6 +9,11 @@
 
 #include "azure_c_shared_utility/vector_types_internal.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 VECTOR_HANDLE VECTOR_create(size_t elementSize)
 {
     VECTOR_HANDLE result;

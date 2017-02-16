@@ -11,6 +11,11 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/refcount.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 typedef struct CONSTBUFFER_HANDLE_DATA_TAG
 {
     CONSTBUFFER alias;

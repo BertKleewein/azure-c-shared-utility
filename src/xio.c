@@ -7,6 +7,11 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xio.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 static const char* CONCRETE_OPTIONS = "concreteOptions";
 
 typedef struct XIO_INSTANCE_TAG

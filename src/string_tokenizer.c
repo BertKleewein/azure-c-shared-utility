@@ -9,6 +9,12 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
+
 typedef struct STRING_TOKEN_TAG
 {
     const char* inputString;

@@ -13,6 +13,7 @@
     #define EXCLUDE_ALL_SHAS_BUT_256    
     #define OPTIMIZE_RETURN_CODES
     #define NO_VERBOSE_OUTPUT
+    #define MSP430_SELECTIVE_NO_LOGGING
     #ifdef DEBUG
         #define MINIMAL_LOGERROR
     #else

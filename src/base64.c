@@ -8,6 +8,10 @@
 #include "azure_c_shared_utility/base64.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
 
 #define splitInt(intVal, bytePos)   (char)((intVal >> (bytePos << 3)) & 0xFF)
 #define joinChars(a, b, c, d) (uint32_t)((uint32_t)a + ((uint32_t)b << 8) + ((uint32_t)c << 16) + ((uint32_t)d << 24))

@@ -8,6 +8,11 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/strings.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 #if !defined(MINIMAL_LOGERROR) && !defined(NO_LOGGING)
 DEFINE_ENUM_STRINGS(MAP_RESULT, MAP_RESULT_VALUES);
 #endif

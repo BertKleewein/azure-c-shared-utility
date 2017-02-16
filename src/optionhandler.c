@@ -7,6 +7,11 @@
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/vector.h"
 
+#ifdef MSP430_SELECTIVE_NO_LOGGING
+#undef LogError
+#define LogError(...)
+#endif
+
 typedef struct OPTION_TAG
 {
     const char* name;
