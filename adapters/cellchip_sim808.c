@@ -421,12 +421,15 @@ int cellchip_open (CELLCHIP_HANDLE handle, ON_CELLCHIP_OPEN_COMPLETE on_open_com
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
     int result;
     
+#if SAFETY_NET
     if ((cellchip == NULL) ||
         (cellchip->atrpc == NULL))
     {
         LogError("invalid args to cellchip_open");
         result = __FAILURE__;
-    } else 
+    }
+    else
+#endif
     {
         cellchip->on_open_complete = on_open_complete;
         cellchip->on_open_complete_context = on_open_complete_context;
@@ -883,6 +886,7 @@ static int start_sequence(CELLCHIP_HANDLE handle, const SEQUENCE_STEP *sequence,
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
     int result;
 
+#if SAFETY_NET
     if ((cellchip == NULL) ||
         (cellchip->atrpc == NULL))
     {
@@ -890,6 +894,7 @@ static int start_sequence(CELLCHIP_HANDLE handle, const SEQUENCE_STEP *sequence,
         result = __FAILURE__;
     }
     else
+#endif
     {
         cellchip->on_action_complete = on_action_complete;
         cellchip->on_action_complete_context = on_action_complete_context;
@@ -929,12 +934,14 @@ int cellchip_attach_to_network(CELLCHIP_HANDLE handle, ON_CELLCHIP_ACTION_COMPLE
     int result;
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
 
+#if SAFETY_NET
     if (cellchip == NULL)
     {
         LogError("invalid args to cellchip_attach_to_network");
         result = __FAILURE__;
     }
-    else 
+    else
+#endif
     {
         cellchip->on_attach_complete = on_attach_complete;
         cellchip->on_attach_complete_context = on_attach_complete_context;
@@ -977,12 +984,14 @@ int cellchip_tls_connect(CELLCHIP_HANDLE handle, const char * host, uint16_t por
     int result;
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
 
+#if SAFETY_NET
     if (cellchip == NULL)
     {
         LogError("invalid args to cellchip_tls_connect");
         result = __FAILURE__;
     }
-    else 
+    else
+#endif
     {
         cellchip->on_connect_complete = on_connect_complete;
         cellchip->on_connect_complete_context = on_connect_complete_context;
@@ -1018,12 +1027,14 @@ int cellchip_send(CELLCHIP_HANDLE handle, const uint8_t* buffer, size_t size, ON
     int result;
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
 
+#if SAFETY_NET
     if (cellchip == NULL)
     {
         LogError("invalid args to cellchip_send");
         result = __FAILURE__;
     }
-    else 
+    else
+#endif
     {
         cellchip->on_send_complete = on_send_complete;
         cellchip->on_send_complete_context = on_send_complete_context;
@@ -1049,6 +1060,7 @@ int cellchip_close (CELLCHIP_HANDLE handle)
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
     int result;
     
+#if SAFETY_NET
     if ((cellchip == NULL) ||
         (cellchip->atrpc == NULL))
     {
@@ -1056,6 +1068,7 @@ int cellchip_close (CELLCHIP_HANDLE handle)
         result = __FAILURE__;
     }
     else
+#endif
     {
         result = atrpc_close(cellchip->atrpc);
     }
@@ -1066,12 +1079,14 @@ void cellchip_destroy (CELLCHIP_HANDLE handle)
 {
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
     
+#if SAFETY_NET
     if ((cellchip == NULL) ||
         (cellchip->atrpc == NULL))
     {
         LogError("invalid args to cellchip_destroy");
     }
     else
+#endif
     {
         atrpc_destroy(cellchip->atrpc);
         tickcounter_destroy(cellchip->tickcounter);
@@ -1083,12 +1098,14 @@ void cellchip_dowork(CELLCHIP_HANDLE handle)
 {
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
 
+#if SAFETY_NET
     if ((cellchip == NULL) ||
         (cellchip->atrpc == NULL))
     {
         LogError("invalid args to cellchip_dowork");
     }
     else
+#endif
     {
         if (cellchip->retry_time > 0)
         {

@@ -109,13 +109,16 @@ void BUFFER_delete(BUFFER_HANDLE handle)
 int BUFFER_build(BUFFER_HANDLE handle, const unsigned char* source, size_t size)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_BUFFER_07_009: [BUFFER_build shall return nonzero if handle is NULL ] */
         result = __FAILURE__;
     }
+    else
+#endif
     /* Codes_SRS_BUFFER_01_002: [The size argument can be zero, in which case the underlying buffer held by the buffer instance shall be freed.] */
-    else if (size == 0)
+    if (size == 0)
     {
         /* Codes_SRS_BUFFER_01_003: [If size is zero, source can be NULL.] */
         BUFFER* b = (BUFFER*)handle;
@@ -127,12 +130,14 @@ int BUFFER_build(BUFFER_HANDLE handle, const unsigned char* source, size_t size)
     }
     else
     {
+#if SAFETY_NET
         if (source == NULL)
         {
             /* Codes_SRS_BUFFER_01_001: [If size is positive and source is NULL, BUFFER_build shall return nonzero] */
             result = __FAILURE__;
         }
         else
+#endif
         {
             BUFFER* b = (BUFFER*)handle;
             /* Codes_SRS_BUFFER_07_011: [BUFFER_build shall overwrite previous contents if the buffer has been previously allocated.] */
@@ -163,6 +168,7 @@ int BUFFER_build(BUFFER_HANDLE handle, const unsigned char* source, size_t size)
 int BUFFER_pre_build(BUFFER_HANDLE handle, size_t size)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_BUFFER_07_006: [If handle is NULL or size is 0 then BUFFER_pre_build shall return a nonzero value.] */
@@ -174,6 +180,7 @@ int BUFFER_pre_build(BUFFER_HANDLE handle, size_t size)
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b = (BUFFER*)handle;
         if (b->buffer != NULL)
@@ -202,12 +209,14 @@ int BUFFER_pre_build(BUFFER_HANDLE handle, size_t size)
 int BUFFER_content(BUFFER_HANDLE handle, const unsigned char** content)
 {
     int result;
+#if SAFETY_NET
     if ((handle == NULL) || (content == NULL))
     {
         /* Codes_SRS_BUFFER_07_020: [If the handle and/or content*is NULL BUFFER_content shall return nonzero.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b = (BUFFER*)handle;
         *content = b->buffer;
@@ -221,12 +230,14 @@ int BUFFER_content(BUFFER_HANDLE handle, const unsigned char** content)
 extern int BUFFER_unbuild(BUFFER_HANDLE handle)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_BUFFER_07_014: [BUFFER_unbuild shall return a nonzero value if BUFFER_HANDLE is NULL.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b = (BUFFER*)handle;
         if (b->buffer != NULL)
@@ -249,12 +260,15 @@ extern int BUFFER_unbuild(BUFFER_HANDLE handle)
 int BUFFER_enlarge(BUFFER_HANDLE handle, size_t enlargeSize)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_BUFFER_07_017: [BUFFER_enlarge shall return a nonzero result if any parameters are NULL or zero.] */
         result = __FAILURE__;
     }
-    else if (enlargeSize == 0)
+    else
+#endif
+    if (enlargeSize == 0)
     {
         /* Codes_SRS_BUFFER_07_017: [BUFFER_enlarge shall return a nonzero result if any parameters are NULL or zero.] */
         result = __FAILURE__;
@@ -282,12 +296,14 @@ int BUFFER_enlarge(BUFFER_HANDLE handle, size_t enlargeSize)
 int BUFFER_size(BUFFER_HANDLE handle, size_t* size)
 {
     int result;
+#if SAFETY_NET
     if ((handle == NULL) || (size == NULL))
     {
         /* Codes_SRS_BUFFER_07_022: [BUFFER_size shall return a nonzero value for any error that is encountered.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b = (BUFFER*)handle;
         *size = b->size;
@@ -300,12 +316,14 @@ int BUFFER_size(BUFFER_HANDLE handle, size_t* size)
 int BUFFER_append(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
 {
     int result;
+#if SAFETY_NET
     if ( (handle1 == NULL) || (handle2 == NULL) || (handle1 == handle2) )
     {
         /* Codes_SRS_BUFFER_07_023: [BUFFER_append shall return a nonzero upon any error that is encountered.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b1 = (BUFFER*)handle1;
         BUFFER* b2 = (BUFFER*)handle2;
@@ -353,12 +371,14 @@ int BUFFER_append(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
 int BUFFER_prepend(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
 {
     int result;
+#if SAFETY_NET
     if ((handle1 == NULL) || (handle2 == NULL) || (handle1 == handle2))
     {
         /* Codes_SRS_BUFFER_01_005: [ BUFFER_prepend shall return a non-zero upon value any error that is encountered. ]*/
         result = __FAILURE__;
     }
     else
+#endif
     {
         BUFFER* b1 = (BUFFER*)handle1;
         BUFFER* b2 = (BUFFER*)handle2;
@@ -413,6 +433,7 @@ unsigned char* BUFFER_u_char(BUFFER_HANDLE handle)
 {
     BUFFER* handleData = (BUFFER*)handle;
     unsigned char* result;
+#if SAFETY_NET
     if (handle == NULL || handleData->size == 0)
     {
         /* Codes_SRS_BUFFER_07_026: [BUFFER_u_char shall return NULL for any error that is encountered.] */
@@ -420,6 +441,7 @@ unsigned char* BUFFER_u_char(BUFFER_HANDLE handle)
         result = NULL;
     }
     else
+#endif
     {
         result = handleData->buffer;
     }
@@ -430,12 +452,14 @@ unsigned char* BUFFER_u_char(BUFFER_HANDLE handle)
 size_t BUFFER_length(BUFFER_HANDLE handle)
 {
     size_t result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_BUFFER_07_028: [BUFFER_length shall return zero for any error that is encountered.] */
         result = 0;
     }
     else
+#endif
     {
         BUFFER* b = (BUFFER*)handle;
         result = b->size;
@@ -446,11 +470,13 @@ size_t BUFFER_length(BUFFER_HANDLE handle)
 BUFFER_HANDLE BUFFER_clone(BUFFER_HANDLE handle)
 {
     BUFFER_HANDLE result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         result = NULL;
     }
     else
+#endif
     {
         BUFFER* suppliedBuff = (BUFFER*)handle;
         BUFFER* b = (BUFFER*)malloc(sizeof(BUFFER));

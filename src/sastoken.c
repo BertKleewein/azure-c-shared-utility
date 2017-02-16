@@ -40,11 +40,13 @@ bool SASToken_Validate(STRING_HANDLE sasToken)
 
     /***Codes_SRS_SASTOKEN_25_024: [**If handle is NULL then SASToken_Validate shall return false.**] ***/
     /*Codes_SRS_SASTOKEN_25_026: [**If STRING_c_str on handle return NULL then SASToken_Validate shall return false.**]***/
+#if SAFETY_NET
     if (sasToken == NULL || sasTokenArray == NULL)
     {
         result = false;
     }
     else
+#endif
     {
         int seStart = -1, seStop = -1;
         int srStart = -1, srStop = -1;
@@ -204,6 +206,7 @@ STRING_HANDLE SASToken_Create(STRING_HANDLE key, STRING_HANDLE scope, STRING_HAN
     /*Codes_SRS_SASTOKEN_06_001: [If key is NULL then SASToken_Create shall return NULL.]*/
     /*Codes_SRS_SASTOKEN_06_003: [If scope is NULL then SASToken_Create shall return NULL.]*/
     /*Codes_SRS_SASTOKEN_06_007: [If keyName is NULL then SASToken_Create shall return NULL.]*/
+#if SAFETY_NET
     if ((key == NULL) ||
         (scope == NULL) ||
         (keyName == NULL))
@@ -211,6 +214,7 @@ STRING_HANDLE SASToken_Create(STRING_HANDLE key, STRING_HANDLE scope, STRING_HAN
         LogError("Invalid Parameter to SASToken_Create. handle key: %p, handle scope: %p, handle keyName: %p", key, scope, keyName);
     }
     else
+#endif
     {
         BUFFER_HANDLE decodedKey;
         /*Codes_SRS_SASTOKEN_06_029: [The key parameter is decoded from base64.]*/

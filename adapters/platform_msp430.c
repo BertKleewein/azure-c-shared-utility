@@ -247,7 +247,6 @@ int msp430_power_cycle_sim808()
 int msp430_exit_sim808_data_mode()
 {
     int result;
-    printf("exiting data mode\n");
     
     GPIO_setOutputLowOnPin(SIM808_DTR_PIN);
     if (0 != msp430_sleep(1100)) {

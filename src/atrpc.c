@@ -305,11 +305,13 @@ static void modem_handshake (void * context_, TA_RESULT_CODE result_code_, const
     (void)response_, response_size_;
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_handshake()!");
     }
     else
+#endif
     {
         switch (result_code_)
         {
@@ -391,11 +393,13 @@ static void modem_on_bytes_received (void * context_, const unsigned char * buff
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_bytes_received()!");
     } 
-    else 
+    else
+#endif
     {
         if (ATRPC_CLOSED == atrpc->status)
         {
@@ -478,11 +482,13 @@ static void modem_on_io_close_complete (void * context_)
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_io_close_complete()!");
     }
     else
+#endif
     {
         atrpc->modem_status = MODEM_IO_CLOSED;
         /* Codes_SRS_ATRPC_27_067: [ on_io_close_complete() shall call nothing. ] */
@@ -495,11 +501,13 @@ static void modem_on_io_error (void * context_)
 {
 //    ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_io_error()!");
     }
     else
+#endif
     {
         LogError("XIO buffer error!");
 #if 0
@@ -521,11 +529,13 @@ static void modem_on_io_open_complete (void * context_, IO_OPEN_RESULT open_resu
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_io_open_complete()!");
     }
     else
+#endif
     {
         if (IO_OPEN_OK != open_result_)
         {
@@ -554,11 +564,13 @@ static void modem_on_send_complete (void * context_, IO_SEND_RESULT send_result_
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
 
+#if SAFETY_NET
     if (NULL == context_)
     {
         LogError("NULL context passed into modem_on_io_open_complete()!");
     }
     else
+#endif
     {
 
         if (IO_SEND_OK != send_result_)
@@ -594,6 +606,7 @@ int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_
     printf("AT sending \"%.*s\"\n", command_string_length_, command_string_length_ == 0 ? "" : (const char*)command_string_);
 #endif
 
+#if SAFETY_NET
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_000: [ If the handle argument is NULL, then atrpc_attention() shall fail and return a non-zero value. ] */
@@ -606,7 +619,9 @@ int atrpc_attention (ATRPC_HANDLE handle_, const unsigned char * command_string_
         result = __FAILURE__;
         LogError("NULL callback passed to atrpc_attention()!");
     }
-    else if (0 != command_string_length_ && NULL == command_string_)
+    else
+#endif
+    if (0 != command_string_length_ && NULL == command_string_)
     {
         /* Codes_SRS_ATRPC_27_085: [ If `command_string_length` is not zero and `command_string` is `NULL`, then `atrpc_attention()` shall fail and return a non-zero value. ] */
         result = __FAILURE__;
@@ -689,13 +704,16 @@ int atrpc_close (ATRPC_HANDLE handle_)
 {
     int result;
     
+#if SAFETY_NET
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_013: [ If the handle argument is NULL, then atrpc_close() shall fail and return a non-zero value. ] */
         result = __FAILURE__;
         LogError("NULL handle passed to atrpc_close()!");
     }
-    else if (ATRPC_CLOSED == handle_->status)
+    else
+#endif
+    if (ATRPC_CLOSED == handle_->status)
     {
         /* Codes_SRS_ATRPC_27_014: [ If atrpc_open() has not been called on the handle, atrpc_close() shall do nothing and return 0. ] */
         result = 0;
@@ -778,12 +796,14 @@ ATRPC_HANDLE atrpc_create (void)
 
 void atrpc_destroy (ATRPC_HANDLE handle_)
 {
+#if SAFETY_NET
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_032: [ If the handle argument is NULL, then atrpc_destroy() shall do nothing. ] */
         LogError("NULL handle passed to atrpc_destroy()!");
     }
     else
+#endif
     {
         /* Codes_SRS_ATRPC_27_033: [ If atrpc_open() has previously been called and atrpc_close() has not been called on the handle, atrpc_destroy() shall call (int)atrpc_close(ATRPC_HANDLE handle) using the handle argument passed to atrpc_destroy() as the handle parameter. ] */
         if (ATRPC_CLOSED != handle_->status)
@@ -812,12 +832,14 @@ void atrpc_destroy (ATRPC_HANDLE handle_)
 
 void atrpc_dowork (ATRPC_HANDLE handle_)
 {
+#if SAFETY_NET
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_039: [ If the handle argument is NULL, then atrpc_dowork() shall do nothing. ] */
         LogError("NULL handle passed to atrpc_dowork()");
     }
     else
+#endif
     {
         tickcounter_ms_t ms;
 
@@ -859,6 +881,7 @@ void atrpc_dowork (ATRPC_HANDLE handle_)
 int atrpc_open (ATRPC_HANDLE handle_, ON_ATRPC_OPEN_COMPLETE on_open_complete_, void * on_open_complete_context_)
 {
     int result;
+#if SAFETY_NET
     if (NULL == handle_)
     {
         /* Codes_SRS_ATRPC_27_046: [ If the handle argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] */
@@ -867,11 +890,13 @@ int atrpc_open (ATRPC_HANDLE handle_, ON_ATRPC_OPEN_COMPLETE on_open_complete_, 
     }
     else if (NULL == on_open_complete_)
     {
-        /* Codes_SRS_ATRPC_27_047: [ If the on_open_complete argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] *sd
+        /* Codes_SRS_ATRPC_27_047: [ If the on_open_complete argument is NULL, then atrpc_open() shall fail and return a non-zero value. ] */
         result = __FAILURE__;
         LogError("NULL callback passed to atrpc_open()!");
     }
-    else if (ATRPC_CLOSED != handle_->status)
+    else
+#endif
+    if (ATRPC_CLOSED != handle_->status)
     {
         /* Codes_SRS_ATRPC_27_048: [ If atrpc_open() has been called previously and atrpc_close() has not been called on the handle, atrpc_open() shall fail and return a non-zero value. ] */
         result = __FAILURE__;

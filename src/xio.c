@@ -18,6 +18,7 @@ typedef struct XIO_INSTANCE_TAG
 XIO_HANDLE xio_create(const IO_INTERFACE_DESCRIPTION* io_interface_description, const void* xio_create_parameters)
 {
     XIO_INSTANCE* xio_instance;
+#if SAFETY_NET
     /* Codes_SRS_XIO_01_003: [If the argument io_interface_description is NULL, xio_create shall return NULL.] */
     if ((io_interface_description == NULL) ||
         /* Codes_SRS_XIO_01_004: [If any io_interface_description member is NULL, xio_create shall return NULL.] */
@@ -33,6 +34,7 @@ XIO_HANDLE xio_create(const IO_INTERFACE_DESCRIPTION* io_interface_description, 
         xio_instance = NULL;
     }
     else
+#endif
     {
         xio_instance = (XIO_INSTANCE*)malloc(sizeof(XIO_INSTANCE));
 
@@ -75,12 +77,14 @@ int xio_open(XIO_HANDLE xio, ON_IO_OPEN_COMPLETE on_io_open_complete, void* on_i
 {
     int result;
 
+#if SAFETY_NET
     if (xio == NULL)
     {
         /* Codes_SRS_XIO_01_021: [If handle is NULL, xio_open shall return a non-zero value.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         XIO_INSTANCE* xio_instance = (XIO_INSTANCE*)xio;
 
@@ -104,12 +108,14 @@ int xio_close(XIO_HANDLE xio, ON_IO_CLOSE_COMPLETE on_io_close_complete, void* c
 {
     int result;
 
+#if SAFETY_NET
     if (xio == NULL)
     {
         /* Codes_SRS_XIO_01_025: [If handle is NULL, xio_close shall return a non-zero value.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         XIO_INSTANCE* xio_instance = (XIO_INSTANCE*)xio;
 
@@ -135,11 +141,13 @@ int xio_send(XIO_HANDLE xio, const void* buffer, size_t size, ON_SEND_COMPLETE o
 
     /* Codes_SRS_XIO_01_011: [No error check shall be performed on buffer and size.] */
     /* Codes_SRS_XIO_01_010: [If handle is NULL, xio_send shall return a non-zero value.] */
+#if SAFETY_NET
     if (xio == NULL)
     {
         result = __FAILURE__;
     }
     else
+#endif
     {
         XIO_INSTANCE* xio_instance = (XIO_INSTANCE*)xio;
 
@@ -170,11 +178,13 @@ int xio_setoption(XIO_HANDLE xio, const char* optionName, const void* value)
     int result;
 
     /* Codes_SRS_XIO_03_030: [If the xio argument or the optionName argument is NULL, xio_setoption shall return a non-zero value.] */
+#if SAFETY_NET
     if (xio == NULL || optionName == NULL)
     {
         result = __FAILURE__;
     }
     else
+#endif
     {
         XIO_INSTANCE* xio_instance = (XIO_INSTANCE*)xio;
 

@@ -89,6 +89,7 @@ VECTOR_HANDLE VECTOR_move(VECTOR_HANDLE handle)
 int VECTOR_push_back(VECTOR_HANDLE handle, const void* elements, size_t numElements)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL || elements == NULL || numElements == 0)
     {
        /* Codes_SRS_VECTOR_10_011: [VECTOR_push_back shall fail and return non-zero if `handle` is NULL.] */
@@ -98,6 +99,7 @@ int VECTOR_push_back(VECTOR_HANDLE handle, const void* elements, size_t numEleme
         result = __FAILURE__;
     }
     else
+#endif
     {
         size_t curSize = handle->elementSize * handle->count;
         size_t appendSize = handle->elementSize * numElements;
@@ -125,6 +127,7 @@ int VECTOR_push_back(VECTOR_HANDLE handle, const void* elements, size_t numEleme
 
 void VECTOR_erase(VECTOR_HANDLE handle, void* elements, size_t numElements)
 {
+#if SAFETY_NET
     if (handle == NULL || elements == NULL || numElements == 0)
     {
         /* Codes_SRS_VECTOR_10_015: [VECTOR_erase shall return if `handle` is NULL.] */
@@ -133,6 +136,7 @@ void VECTOR_erase(VECTOR_HANDLE handle, void* elements, size_t numElements)
         LogError("invalid argument - handle(%p), elements(%p), numElements(%zd).", handle, elements, numElements);
     }
     else
+#endif
     {
         if (elements < handle->storage)
         {

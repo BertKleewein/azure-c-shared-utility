@@ -76,9 +76,12 @@ TICK_COUNTER_HANDLE tickcounter_create(void)
 {
     tickcounter_ms_t * creation_offset_ms;
 
-    if (NULL == (creation_offset_ms = (tickcounter_ms_t *)malloc(sizeof(tickcounter_ms_t)))) {
+    if (NULL == (creation_offset_ms = (tickcounter_ms_t *)malloc(sizeof(tickcounter_ms_t))))
+    {
         // Insufficient memory
-    } else {
+    }
+    else
+    {
         system_ticks.timer_a.counter_value = Timer_A_getCounterValue(TIMER_A3_BASE);
         *creation_offset_ms = now_ms();
     }
@@ -96,9 +99,14 @@ void timer_a3_deinit(void)
 
 void tickcounter_destroy(TICK_COUNTER_HANDLE tick_counter)
 {
-    if (NULL == tick_counter) {
+#if SAFETY_NET
+    if (NULL == tick_counter)
+    {
         LogError("NULL handle passed to `tickcounter_destroy`");
-    } else {
+    }
+    else
+#endif
+    {
         free(tick_counter);
     }
 }
@@ -115,9 +123,12 @@ int timer_a3_init(void)
 
     // Update `timer_a3_ticks_per_second` with actual ticks per second
     // divided by the `.clockSourceDivider` value provided below
-    if (minimum_Hz > (aclk_Hz = CS_getACLK())) {
+    if (minimum_Hz > (aclk_Hz = CS_getACLK()))
+    {
         error = __FAILURE__;
-    } else {
+    }
+    else
+    {
         timer_a3_ticks_per_second = (aclk_Hz >> 4);
         Timer_A_initContinuousModeParam param = {
             .clockSource = TIMER_A_CLOCKSOURCE_ACLK,
@@ -138,11 +149,18 @@ int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_
 {
     int error;
 
-    if (NULL == tick_counter) {
+#if SAFETY_NET
+    if (NULL == tick_counter)
+    {
         error = __FAILURE__;
-    } else if (NULL == current_ms) {
+    }
+    else if (NULL == current_ms)
+    {
         error = __FAILURE__;
-    } else {
+    }
+    else
+#endif
+    {
         system_ticks.timer_a.counter_value = Timer_A_getCounterValue(TIMER_A3_BASE);
         *current_ms = (now_ms() - *(tickcounter_ms_t *)tick_counter);
         error = 0;

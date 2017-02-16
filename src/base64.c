@@ -188,12 +188,14 @@ BUFFER_HANDLE Base64_Decoder(const char* source)
 {
     BUFFER_HANDLE result;
     /*Codes_SRS_BASE64_06_008: [If source is NULL then Base64_Decode shall return NULL.]*/
+#if SAFETY_NET
     if (source == NULL)
     {
         LogError("invalid parameter const char* source=%p", source);
         result = NULL;
     }
     else
+#endif
     {
         if ((strlen(source) % 4) != 0)
         {
@@ -317,12 +319,15 @@ STRING_HANDLE Base64_Encode_Bytes(const unsigned char* source, size_t size)
 {
     STRING_HANDLE result;
     /*Codes_SRS_BASE64_02_001: [If source is NULL then Base64_Encode_Bytes shall return NULL.] */
+#if SAFETY_NET
     if (source == NULL)
     {
         result = NULL;
     }
     /*Codes_SRS_BASE64_02_002: [If source is not NULL and size is zero, then Base64_Encode_Bytes shall produce an empty STRING_HANDLE.] */
-    else if (size == 0)
+    else
+#endif
+    if (size == 0)
     {
         result = STRING_new(); /*empty string*/
     }
@@ -344,12 +349,14 @@ STRING_HANDLE Base64_Encode(BUFFER_HANDLE input)
     /*these are the bits of the 3 normal bytes to be encoded*/
 
     /*Codes_SRS_BASE64_06_001: [If input is NULL then Base64_Encode shall return NULL.]*/
+#if SAFETY_NET
     if (input == NULL)
     {
         result = NULL;
         LogError("Base64_Encode:: NULL input");
     }
     else
+#endif
     {
         size_t inputSize;
         const unsigned char* inputBinary;

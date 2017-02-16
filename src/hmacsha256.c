@@ -9,7 +9,7 @@
 HMACSHA256_RESULT HMACSHA256_ComputeHash(const unsigned char* key, size_t keyLen, const unsigned char* payload, size_t payloadLen, BUFFER_HANDLE hash)
 {
     HMACSHA256_RESULT result;
-
+#if SAFETY_NET
     if (key == NULL ||
         keyLen == 0 ||
         payload == NULL ||
@@ -19,6 +19,7 @@ HMACSHA256_RESULT HMACSHA256_ComputeHash(const unsigned char* key, size_t keyLen
         result = HMACSHA256_INVALID_ARG;
     }
     else
+#endif
     {
         if ((BUFFER_enlarge(hash, 32) != 0) ||
             (hmac(SHA256, payload, (int)payloadLen, key, (int)keyLen, BUFFER_u_char(hash) ) != 0))

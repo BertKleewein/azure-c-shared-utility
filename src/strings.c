@@ -53,11 +53,13 @@ STRING_HANDLE STRING_clone(STRING_HANDLE handle)
 {
     STRING* result;
     /*Codes_SRS_STRING_02_002: [If parameter handle is NULL then STRING_clone shall return NULL.]*/
+#if SAFETY_NET
     if (handle == NULL)
     {
         result = NULL;
     }
     else
+#endif
     {
         /*Codes_SRS_STRING_02_003: [If STRING_clone fails for any reason, it shall return NULL.] */
         if ((result = (STRING*)malloc(sizeof(STRING))) != NULL)
@@ -364,12 +366,14 @@ STRING_HANDLE STRING_new_JSON(const char* source)
 int STRING_concat(STRING_HANDLE handle, const char* s2)
 {
     int result;
+#if SAFETY_NET
     if ((handle == NULL) || (s2 == NULL))
     {
         /* Codes_SRS_STRING_07_013: [STRING_concat shall return a nonzero number if an error is encountered.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* s1 = (STRING*)handle;
         size_t s1Length = strlen(s1->s);
@@ -397,12 +401,14 @@ int STRING_concat(STRING_HANDLE handle, const char* s2)
 int STRING_concat_with_STRING(STRING_HANDLE s1, STRING_HANDLE s2)
 {
     int result;
+#if SAFETY_NET
     if ((s1 == NULL) || (s2 == NULL))
     {
         /* Codes_SRS_STRING_07_035: [String_Concat_with_STRING shall return a nonzero number if an error is encountered.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* dest = (STRING*)s1;
         STRING* src = (STRING*)s2;
@@ -433,12 +439,14 @@ int STRING_concat_with_STRING(STRING_HANDLE s1, STRING_HANDLE s2)
 int STRING_copy(STRING_HANDLE handle, const char* s2)
 {
     int result;
+#if SAFETY_NET
     if ((handle == NULL) || (s2 == NULL))
     {
         /* Codes_SRS_STRING_07_017: [STRING_copy shall return a nonzero value if any of the supplied parameters are NULL.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* s1 = (STRING*)handle;
         /* Codes_SRS_STRING_07_026: [If the underlying char* refered to by s1 handle is equal to char* s2 than STRING_copy shall be a noop and return 0.] */
@@ -474,12 +482,14 @@ int STRING_copy(STRING_HANDLE handle, const char* s2)
 int STRING_copy_n(STRING_HANDLE handle, const char* s2, size_t n)
 {
     int result;
+#if SAFETY_NET
     if ((handle == NULL) || (s2 == NULL))
     {
         /* Codes_SRS_STRING_07_019: [STRING_copy_n shall return a nonzero value if STRING_HANDLE or const char* is NULL.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* s1 = (STRING*)handle;
         size_t s2Length = strlen(s2);
@@ -519,6 +529,7 @@ int STRING_sprintf(STRING_HANDLE handle, const char* format, ...)
     char* buf = NULL;
 #endif
     
+#if SAFETY_NET
     if (handle == NULL || format == NULL)
     {
         /* Codes_SRS_STRING_07_042: [if the parameters s1 or format are NULL then STRING_sprintf shall return non zero value.] */
@@ -526,6 +537,7 @@ int STRING_sprintf(STRING_HANDLE handle, const char* format, ...)
         result = __FAILURE__;
     }
     else
+#endif
     {
         va_list arg_list;
 		int s2Length;
@@ -586,12 +598,14 @@ int STRING_sprintf(STRING_HANDLE handle, const char* format, ...)
 int STRING_quote(STRING_HANDLE handle)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_STRING_07_015: [STRING_quote shall return a nonzero value if any of the supplied parameters are NULL.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* s1 = (STRING*)handle;
         size_t s1Length = strlen(s1->s);
@@ -619,12 +633,14 @@ int STRING_quote(STRING_HANDLE handle)
 int STRING_empty(STRING_HANDLE handle)
 {
     int result;
+#if SAFETY_NET
     if (handle == NULL)
     {
         /* Codes_SRS_STRING_07_023: [STRING_empty shall return a nonzero value if the STRING_HANDLE is NULL.] */
         result = __FAILURE__;
     }
     else
+#endif
     {
         STRING* s1 = (STRING*)handle;
         char* temp = (char*)realloc(s1->s, 1);

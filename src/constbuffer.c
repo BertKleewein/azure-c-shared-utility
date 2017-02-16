@@ -68,6 +68,7 @@ CONSTBUFFER_HANDLE CONSTBUFFER_Create(const unsigned char* source, size_t size)
 {
     CONSTBUFFER_HANDLE_DATA* result;
     /*Codes_SRS_CONSTBUFFER_02_001: [If source is NULL and size is different than 0 then CONSTBUFFER_Create shall fail and return NULL.]*/
+#if SAFETY_NET
     if (
         (source == NULL) &&
         (size != 0)
@@ -77,6 +78,7 @@ CONSTBUFFER_HANDLE CONSTBUFFER_Create(const unsigned char* source, size_t size)
         result = NULL;
     }
     else
+#endif
     {
         result = (CONSTBUFFER_HANDLE_DATA*)CONSTBUFFER_Create_Internal(source, size);
     }
@@ -88,12 +90,14 @@ CONSTBUFFER_HANDLE CONSTBUFFER_CreateFromBuffer(BUFFER_HANDLE buffer)
 {
     CONSTBUFFER_HANDLE_DATA* result;
     /*Codes_SRS_CONSTBUFFER_02_006: [If buffer is NULL then CONSTBUFFER_CreateFromBuffer shall fail and return NULL.]*/
+#if SAFETY_NET
     if (buffer == NULL)
     {
         LogError("invalid arg passed to CONSTBUFFER_CreateFromBuffer");
         result = NULL;
     }
     else
+#endif
     {
         size_t length = BUFFER_length(buffer);
         unsigned char* rawBuffer = BUFFER_u_char(buffer);
@@ -104,12 +108,14 @@ CONSTBUFFER_HANDLE CONSTBUFFER_CreateFromBuffer(BUFFER_HANDLE buffer)
 
 CONSTBUFFER_HANDLE CONSTBUFFER_Clone(CONSTBUFFER_HANDLE constbufferHandle)
 {
+#if SAFETY_NET
     if (constbufferHandle == NULL)
     {
         /*Codes_SRS_CONSTBUFFER_02_013: [If constbufferHandle is NULL then CONSTBUFFER_Clone shall fail and return NULL.]*/
         LogError("invalid arg");
     }
     else
+#endif
     {
         /*Codes_SRS_CONSTBUFFER_02_014: [Otherwise, CONSTBUFFER_Clone shall increment the reference count and return constbufferHandle.]*/
         INC_REF(CONSTBUFFER_HANDLE_DATA, constbufferHandle);
@@ -120,6 +126,7 @@ CONSTBUFFER_HANDLE CONSTBUFFER_Clone(CONSTBUFFER_HANDLE constbufferHandle)
 const CONSTBUFFER* CONSTBUFFER_GetContent(CONSTBUFFER_HANDLE constbufferHandle)
 {
     const CONSTBUFFER* result;
+#if SAFETY_NET
     if (constbufferHandle == NULL)
     {
         /*Codes_SRS_CONSTBUFFER_02_011: [If constbufferHandle is NULL then CONSTBUFFER_GetContent shall return NULL.]*/
@@ -127,6 +134,7 @@ const CONSTBUFFER* CONSTBUFFER_GetContent(CONSTBUFFER_HANDLE constbufferHandle)
         LogError("invalid arg");
     }
     else
+#endif
     {
         /*Codes_SRS_CONSTBUFFER_02_012: [Otherwise, CONSTBUFFER_GetContent shall return a const CONSTBUFFER* that matches byte by byte the original bytes used to created the const buffer and has the same length.]*/
         result = &(((CONSTBUFFER_HANDLE_DATA*)constbufferHandle)->alias);

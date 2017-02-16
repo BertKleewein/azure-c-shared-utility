@@ -13,17 +13,14 @@ void ThreadAPI_Sleep(unsigned int milliseconds)
 
 THREADAPI_RESULT ThreadAPI_Create(THREAD_HANDLE* threadHandle, THREAD_START_FUNC func, void* arg)
 {
-    LogError("This platform does not support multi-thread function.");
     return THREADAPI_ERROR;
 }
 
 THREADAPI_RESULT ThreadAPI_Join(THREAD_HANDLE threadHandle, int* res)
 {
-    LogError("This platform does not support multi-thread function.");
     return THREADAPI_ERROR;
 }
 
 void ThreadAPI_Exit(int res)
 {
-    LogError("This platform does not support multi-thread function.");
 }

@@ -34,12 +34,14 @@ HTTPAPIEX_HANDLE HTTPAPIEX_Create(const char* hostName)
 {
     HTTPAPIEX_HANDLE result;
     /*Codes_SRS_HTTPAPIEX_02_001: [If parameter hostName is NULL then HTTPAPIEX_Create shall return NULL.]*/
+#if SAFETY_NET
     if (hostName == NULL)
     {
         LogError("invalid (NULL) parameter");
         result = NULL;
     }
     else
+#endif
     {
         /*Codes_SRS_HTTPAPIEX_02_005: [If creating the handle fails for any reason, then HTTAPIEX_Create shall return NULL.] */
         HTTPAPIEX_HANDLE_DATA* handleData = (HTTPAPIEX_HANDLE_DATA*)malloc(sizeof(HTTPAPIEX_HANDLE_DATA));
@@ -302,12 +304,15 @@ HTTPAPIEX_RESULT HTTPAPIEX_ExecuteRequest(HTTPAPIEX_HANDLE handle, HTTPAPI_REQUE
 {
     HTTPAPIEX_RESULT result;
     /*Codes_SRS_HTTPAPIEX_02_006: [If parameter handle is NULL then HTTPAPIEX_ExecuteRequest shall fail and return HTTPAPIEX_INVALID_ARG.]*/
+#if SAFETY_NET
+
     if (handle == NULL)
     {
         result = HTTPAPIEX_INVALID_ARG;
         LOG_HTTAPIEX_ERROR();
     }
     else
+#endif
     {
         /*Codes_SRS_HTTPAPIEX_02_007: [If parameter requestType does not indicate a valid request, HTTPAPIEX_ExecuteRequest shall fail and return HTTPAPIEX_INVALID_ARG.] */
         if (requestType >= COUNT_ARG(HTTPAPI_REQUEST_TYPE_VALUES))
@@ -587,6 +592,7 @@ HTTPAPIEX_RESULT HTTPAPIEX_SetOption(HTTPAPIEX_HANDLE handle, const char* option
     /*Codes_SRS_HTTPAPIEX_02_032: [If parameter handle is NULL then HTTPAPIEX_SetOption shall return HTTPAPIEX_INVALID_ARG.] */
     /*Codes_SRS_HTTPAPIEX_02_033: [If parameter optionName is NULL then HTTPAPIEX_SetOption shall return HTTPAPIEX_INVALID_ARG.] */
     /*Codes_SRS_HTTPAPIEX_02_034: [If parameter value is NULL then HTTPAPIEX_SetOption shall return HTTPAPIEX_INVALID_ARG.] */
+#if SAFETY_NET
     if (
         (handle == NULL) ||
         (optionName == NULL) ||
@@ -597,6 +603,7 @@ HTTPAPIEX_RESULT HTTPAPIEX_SetOption(HTTPAPIEX_HANDLE handle, const char* option
         LOG_HTTAPIEX_ERROR();
     }
     else
+#endif
     {
         const void* savedOption;
         HTTPAPI_RESULT saveOptionResult;

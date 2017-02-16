@@ -69,12 +69,15 @@ CONCRETE_IO_HANDLE tlsio_sim800_create(void* io_create_parameters)
     TLSIO_SIM800_INSTANCE *tlsio;
     TLSIO_CONFIG *config = (TLSIO_CONFIG*)io_create_parameters;
 
+#if SAFETY_NET
     if (NULL == config || NULL == config->hostname)
     {
         LogError("invalid args");
         tlsio = NULL;
     }
-    else if (NULL == (tlsio = (TLSIO_SIM800_INSTANCE*)malloc(sizeof(TLSIO_SIM800_INSTANCE))))
+    else
+#endif
+    if (NULL == (tlsio = (TLSIO_SIM800_INSTANCE*)malloc(sizeof(TLSIO_SIM800_INSTANCE))))
     {
         LogError("Allocation failure");
     }
@@ -194,12 +197,14 @@ int tlsio_sim800_open(CONCRETE_IO_HANDLE handle, ON_IO_OPEN_COMPLETE on_io_open_
     TLSIO_SIM800_INSTANCE *tlsio = (TLSIO_SIM800_INSTANCE*)handle;
     int result;
     
+#if SAFETY_NET
     if (NULL == tlsio)
     {
         LogError("invalid arg to tlsio_sim800_open");
         result = __FAILURE__;
     }
     else
+#endif
     {
         tlsio->on_io_open_complete = on_io_open_complete;
         tlsio->on_io_open_complete_context = on_io_open_complete_context;
@@ -223,12 +228,15 @@ int tlsio_sim800_close(CONCRETE_IO_HANDLE handle, ON_IO_CLOSE_COMPLETE on_io_clo
     TLSIO_SIM800_INSTANCE *tlsio = (TLSIO_SIM800_INSTANCE*)handle;
     int result;
     
+#if 0
     if (NULL == tlsio)
     {
         LogError("invalid arg to tlsio_sim800_open");
         result = __FAILURE__;
     }
-    else if (0 != cellchip_close(tlsio->cellchip))
+    else
+#endif
+    if (0 != cellchip_close(tlsio->cellchip))
     {
         LogError("cellchip_close failed");
         result = __FAILURE__;
@@ -260,13 +268,16 @@ int tlsio_sim800_send(CONCRETE_IO_HANDLE handle, const void* buffer, size_t size
 {
     TLSIO_SIM800_INSTANCE *tlsio = (TLSIO_SIM800_INSTANCE*)handle;
     int result;
-    
+
+#if SAFETY_NET
     if (NULL == tlsio || buffer == NULL || size == 0)
     {
         LogError("invalid arg to tlsio_sim800_send");
         result = __FAILURE__;
-    } 
-    else if (0 != cellchip_send(tlsio->cellchip, buffer, size, on_cellchip_send_complete, tlsio))
+    }
+    else
+#endif
+    if (0 != cellchip_send(tlsio->cellchip, buffer, size, on_cellchip_send_complete, tlsio))
     {
         if (on_send_complete != NULL)
         {
@@ -283,11 +294,13 @@ void tlsio_sim800_dowork(CONCRETE_IO_HANDLE handle)
 {
     TLSIO_SIM800_INSTANCE *tlsio = (TLSIO_SIM800_INSTANCE*)handle;
     
+#if SAFETY_NET
     if (NULL == tlsio)
     {
         LogError("invalid arg to tlsio_sim800_open");
     }
     else
+#endif
     {
         cellchip_dowork(tlsio->cellchip);
     }

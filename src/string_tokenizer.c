@@ -21,12 +21,14 @@ STRING_TOKENIZER_HANDLE STRING_TOKENIZER_create(STRING_HANDLE handle)
     STRING_TOKENIZER_HANDLE result;
 
     /* Codes_SRS_STRING_04_001: [STRING_TOKENIZER_create shall return an NULL STRING_TOKENIZER_HANDLE if parameter handle is NULL] */
+#if SAFETY_NET
     if (handle == NULL)
     {
         LogError("Invalid Argument. Handle cannot be NULL.");
         result = NULL;
     }
     else
+#endif
     {
         /* Codes_SRS_STRING_04_002: [STRING_TOKENIZER_create shall allocate a new STRING_TOKENIZER_HANDLE having the content of the STRING_HANDLE copied and current position pointing at the beginning of the string] */
         result = STRING_TOKENIZER_create_from_char(STRING_c_str(handle));
@@ -41,13 +43,16 @@ extern STRING_TOKENIZER_HANDLE STRING_TOKENIZER_create_from_char(const char* inp
     char* inputStringToMalloc;
 
     /* Codes_SRS_STRING_07_001: [STRING_TOKENIZER_create shall return an NULL STRING_TOKENIZER_HANDLE if parameter input is NULL] */
+#if SAFETY_NET
     if (input == NULL)
     {
         LogError("Invalid Argument. Handle cannot be NULL.");
         result = NULL;
     }
     /* Codes_SRS_STRING_07_002: [STRING_TOKENIZER_create shall allocate a new STRING_TOKENIZER_HANDLE having the content of the STRING_HANDLE copied and current position pointing at the beginning of the string] */
-    else if ((result = (STRING_TOKEN*)malloc(sizeof(STRING_TOKEN))) == NULL)
+    else
+#endif
+    if ((result = (STRING_TOKEN*)malloc(sizeof(STRING_TOKEN))) == NULL)
     {
         LogError("Memory Allocation failed. Cannot allocate STRING_TOKENIZER.");
     }
@@ -70,11 +75,13 @@ int STRING_TOKENIZER_get_next_token(STRING_TOKENIZER_HANDLE tokenizer, STRING_HA
 {
     int result;
     /* Codes_SRS_STRING_04_004: [STRING_TOKENIZER_get_next_token shall return a nonzero value if any of the 3 parameters is NULL] */
+#if SAFETY_NET
     if (tokenizer == NULL || output == NULL || delimiters == NULL)
     {
         result = __FAILURE__;
     }
-    else 
+    else
+#endif
     {
         STRING_TOKEN* token = (STRING_TOKEN*)tokenizer;
         /* Codes_SRS_STRING_04_011: [Each subsequent call to STRING_TOKENIZER_get_next_token starts searching from the saved position on t and behaves as described above.] */

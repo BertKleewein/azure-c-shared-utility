@@ -286,6 +286,7 @@ uartio_close(
 ) {
     int result;
 
+#if SAFETY_NET
     if (NULL == uartio_) {
         LogError("invalid arg to uartio_close");
         result = __FAILURE__;
@@ -295,7 +296,9 @@ uartio_close(
     } else if (NULL == on_io_close_complete_) {
         LogError("invalid arg to uartio_close");
         result = __FAILURE__;
-    } else if (!_uartio.open) {
+    } else
+#endif
+    if (!_uartio.open) {
         LogError("uart not open");
         result = __FAILURE__;
     } else {
@@ -317,6 +320,7 @@ uartio_create(
     UARTIO_CONFIG * uartio_config = io_create_parameters_;
     UartIoState * result;  // Errors encountered during `uartio_create()` should NOT affect static singleton
 
+#if SAFETY_NET
     if (NULL == io_create_parameters_) {
         LogError("invalid arg to uartio_create");
         result = NULL;
@@ -329,7 +333,9 @@ uartio_create(
     } else if (NULL != _singleton) {
         LogError("invalid arg to uartio_create");
         result = NULL;
-    } else if (0 != pingpong_alloc(&_uartio.uart_rx_buffer)) {
+    } else
+#endif
+    if (0 != pingpong_alloc(&_uartio.uart_rx_buffer)) {
         LogError("pingpong_alloc failed");
         result = NULL;
     } else if (0 != pingpong_alloc(&_uartio.uart_rxstatus_buffer)) {
@@ -351,11 +357,14 @@ void
 uartio_destroy(
     CONCRETE_IO_HANDLE uartio_
 ) {
+#if SAFETY_NET
     if (NULL == uartio_) {
         LogError("NULL handle passed to uartio_destroy!");
     } else if (_singleton != uartio_) {
         LogError("Invalid handle passed to uartio_destroy!");
-    } else {
+    } else
+#endif
+    {
         // Best effort close, cannot check error conditions
         (void)uartio_close(uartio_, internal_uarito_close_callback_required_when_closed_from_uartio_destroy, NULL);
         pingpong_free(&_uartio.uart_rx_buffer);
@@ -380,11 +389,14 @@ void
 uartio_dowork(
     CONCRETE_IO_HANDLE uartio_
 ) {
+#if SAFETY_NET
     if (NULL == uartio_) {
         LogError("NULL handle passed to uartio_dowork!");
     } else if (_singleton != uartio_) {
         LogError("Invalid handle passed to uartio_dowork!");
-    } else if (!_uartio.open) {
+    } else
+#endif
+    if (!_uartio.open) {
         LogError("Closed handle passed to uartio_dowork!");
     } else {
         if (pingpong_check_for_data(&_uartio.uart_rx_buffer))
@@ -454,6 +466,7 @@ uartio_open(
 ) {
     int result;
 
+#if SAFETY_NET
     if (NULL == uartio_) {
         LogError("invalid arg to uartio_open");
         result = __FAILURE__;
@@ -472,7 +485,9 @@ uartio_open(
     } else if (_uartio.open) {
         LogError("uart already open");
         result = __FAILURE__;
-    } else {
+    } else
+#endif
+    {
         // Ensure the SMCLK is available to the UART module
         CS_enableClockRequest(CS_SMCLK);
 
@@ -509,11 +524,14 @@ uartio_retrieveoptions(
 ) {
     OPTIONHANDLER_HANDLE options;
 
+#if SAFETY_NET
     if (NULL == uartio_) {
         options = NULL;
     } else if (_singleton != uartio_) {
         options = NULL;
-    } else {
+    } else
+#endif
+    {
         options = OptionHandler_Create(uartio_cloneoption, uartio_destroyoption, uartio_setoption);
     }
 
@@ -531,6 +549,7 @@ uartio_send(
 ) {
     int result;
 
+#if SAFETY_NET
     if (NULL == uartio_) {
         LogError("invalid arg to uartio_send");
         result = __FAILURE__;
@@ -546,7 +565,9 @@ uartio_send(
     } else if (NULL == on_send_complete_) {
         LogError("invalid arg to uartio_send");
         result = __FAILURE__;
-    } else if (!_uartio.open) {
+    } else
+#endif
+    if (!_uartio.open) {
         LogError("uart not open in uartio_send");
         result = __FAILURE__;
     } else {
