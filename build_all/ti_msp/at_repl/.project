@@ -3,7 +3,6 @@
 	<name>at_repl</name>
 	<comment></comment>
 	<projects>
-		<project>c_utility</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
@@ -25,4 +24,61 @@
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>atrpc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/atrpc.c</locationURI>
+		</link>
+		<link>
+			<name>cellchip_sim808.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/cellchip_sim808.c</locationURI>
+		</link>
+		<link>
+			<name>dmapingpong_msp430.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/dmapingpong_msp430.c</locationURI>
+		</link>
+		<link>
+			<name>driverlib_msp430.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/driverlib_msp430.c</locationURI>
+		</link>
+		<link>
+			<name>optionhandler.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/optionhandler.c</locationURI>
+		</link>
+		<link>
+			<name>platform_msp430.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/platform_msp430.c</locationURI>
+		</link>
+		<link>
+			<name>tickcounter_msp430.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/tickcounter_msp430.c</locationURI>
+		</link>
+		<link>
+			<name>uartio_msp430.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/uartio_msp430.c</locationURI>
+		</link>
+		<link>
+			<name>vector.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/vector.c</locationURI>
+		</link>
+		<link>
+			<name>xio.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xio.c</locationURI>
+		</link>
+		<link>
+			<name>xlogging.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xlogging.c</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>
