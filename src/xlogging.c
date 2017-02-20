@@ -8,7 +8,7 @@
 
 #elif (defined MINIMAL_LOGERROR)
 
-char *minimal_logmsg = "Error %s Line %d";
+char *minimal_logmsg = "Error %s Line %d\n";
 
 #else
 

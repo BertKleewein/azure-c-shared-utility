@@ -22,18 +22,18 @@
 #include "azure_c_shared_utility/httpapi.h"
 
 #define MAX_HOSTNAME     64
-#define TEMP_BUFFER_SIZE 1024
+#define TEMP_BUFFER_SIZE 512
 
 /*Codes_SRS_HTTPAPI_COMPACT_21_077: [ The HTTPAPI_ExecuteRequest shall wait, at least, 10 seconds for the SSL open process. ]*/
-#define MAX_OPEN_RETRY   100
+#define MAX_OPEN_RETRY   600000
 /*Codes_SRS_HTTPAPI_COMPACT_21_084: [ The HTTPAPI_CloseConnection shall wait, at least, 10 seconds for the SSL close process. ]*/
-#define MAX_CLOSE_RETRY   100
+#define MAX_CLOSE_RETRY   600000
 /*Codes_SRS_HTTPAPI_COMPACT_21_079: [ The HTTPAPI_ExecuteRequest shall wait, at least, 20 seconds to send a buffer using the SSL connection. ]*/
-#define MAX_SEND_RETRY   200
+#define MAX_SEND_RETRY   600000
 /*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
-#define MAX_RECEIVE_RETRY   200
+#define MAX_RECEIVE_RETRY   600000
 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-#define RETRY_INTERVAL_IN_MICROSECONDS  100
+#define RETRY_INTERVAL_IN_MICROSECONDS  1
 
 #if !defined(MINIMAL_LOGERROR) && !defined(NO_LOGGING)
 DEFINE_ENUM_STRINGS(HTTPAPI_RESULT, HTTPAPI_RESULT_VALUES)

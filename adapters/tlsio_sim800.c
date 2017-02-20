@@ -259,7 +259,7 @@ static void on_cellchip_send_complete(void* context, CELLCHIP_RESULT_CODE cellch
     TLSIO_SIM800_INSTANCE *tlsio = (TLSIO_SIM800_INSTANCE*)context;
     if (tlsio->on_send_complete != NULL)
     {
-        tlsio->on_send_complete(context, cellchip_result == CELLCHIP_OK ? IO_SEND_OK : IO_SEND_ERROR);
+        tlsio->on_send_complete(tlsio->on_send_complete_context, cellchip_result == CELLCHIP_OK ? IO_SEND_OK : IO_SEND_ERROR);
         tlsio->on_send_complete = NULL;
     }
 }
@@ -277,14 +277,22 @@ int tlsio_sim800_send(CONCRETE_IO_HANDLE handle, const void* buffer, size_t size
     }
     else
 #endif
-    if (0 != cellchip_send(tlsio->cellchip, buffer, size, on_cellchip_send_complete, tlsio))
     {
-        if (on_send_complete != NULL)
+        tlsio->on_send_complete = on_send_complete;
+        tlsio->on_send_complete_context = on_send_complete_context;
+        if (0 != cellchip_send(tlsio->cellchip, buffer, size, on_cellchip_send_complete, tlsio))
         {
-            on_send_complete(on_send_complete_context, IO_SEND_ERROR);
+            if (on_send_complete != NULL)
+            {
+                on_send_complete(on_send_complete_context, IO_SEND_ERROR);
+            }
+            LogError("cellchip_send failed");
+            result = __FAILURE__;
         }
-        LogError("cellchip_send failed");
-        result = __FAILURE__;
+        else
+        {
+            result = 0;
+        }
     }
 
     return result;

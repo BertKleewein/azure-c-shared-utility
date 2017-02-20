@@ -658,7 +658,7 @@ static int create_custom_command_string(CELLCHIP_SIM808_INSTANCE *cellchip, cons
         //"+CIPSTART=\"TCP\",\"40.118.160.XXX\",7"
         dest[0] = 0;
         char s[10];
-        char *portstring = i2s(cellchip->port, s, COUNTOF(s));
+        char *portstring = i2s(cellchip->port, s, COUNTOF(s))+1;    // BKTODO: why +1?
         if (safe_strcat(dest, "+CIPSTART=\"", COUNTOF(cellchip->custom_command_string)) &&
             safe_strcat(dest, PROTOCOL, COUNTOF(cellchip->custom_command_string)) &&
             safe_strcat(dest, "\",\"", COUNTOF(cellchip->custom_command_string)) &&
