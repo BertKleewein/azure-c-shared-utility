@@ -30,8 +30,10 @@
 // #define VERBOSE_MODEM_DEBUGGING 1
 // TIGHT_MODEM_DEBUGGING shows you summaries of AT commands, with 1 character per command
 #define TIGHT_MODEM_DEBUGGING 1
-// VERBOSE_IO_DEBUGGING shows you incoming buffers
-// #define VERBOSE_IO_DEBUGGING 1
+// VERBOSE_INCOMING shows you incoming buffers
+#define VERBOSE_INCOMING 1
+// VERBOSE_OUTGOING shows you outgoing buffers
+//#define VERBOSE_OUTGOING 1
 #endif  
 
 // BKTODO: this is a singleton.  Could we support multiple connections?
@@ -355,17 +357,27 @@ static void save_data_hack(const uint8_t *buffer, size_t size)
         g_buffer_index++;
         if (g_buffer_index == sizeof(g_buffer))
         {
-            g_buffer_index = 0;
-#ifdef VERBOSE_IO_DEBUGGING
-            printf ("\n");
-            for (int j = 0; j < sizeof(g_buffer); j++)
-            {
-                _putchar(g_buffer[j]);
-            }
-            printf ("\n");
+#ifdef VERBOSE_INCOMING
+            save_data_dump();
 #endif
+            g_buffer_index = 0;
         }
     }
+}
+
+void save_data_reset()
+{
+    g_buffer_index = 0;
+}
+
+void save_data_dump()
+{
+    printf ("<in %d>\n", g_buffer_index);
+    for (int j = 0; j < g_buffer_index; j++)
+    {
+        _putchar(g_buffer[j]);
+    }
+    printf ("</in>\n");
 }
 
 // BKTODO: there's no extrenal interface for getting out of data mode
@@ -1070,6 +1082,15 @@ int cellchip_send(CELLCHIP_HANDLE handle, const uint8_t* buffer, size_t size, ON
     {
         cellchip->on_send_complete = on_send_complete;
         cellchip->on_send_complete_context = on_send_complete_context;
+
+#ifdef VERBOSE_OUTGOING
+        printf("<out %d>\n",size);
+        for (int i = 0; i < size; i++)
+        {
+            _putchar(buffer[i]);
+        }
+        printf("</out>\n");
+#endif
 
         if (0 != atrpc_send_raw_data(cellchip->atrpc, buffer, size, on_atrpc_send_raw_data_complete, cellchip))
         {

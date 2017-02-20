@@ -961,9 +961,6 @@ int atrpc_set_raw_data_callback(ATRPC_HANDLE handle, ON_ATRPC_RAW_DATA_RECEIVED 
 static void on_internal_send_raw_data_complete (void * context, IO_SEND_RESULT send_result)
 {
     ATRPC_INSTANCE *atrpc = (ATRPC_INSTANCE *)context;
-#ifdef TIGHT_MODEM_DEBUGGING
-    printf(">(%d)\n",send_result);
-#endif
     switch(send_result)
     {
         case IO_OPEN_OK:

@@ -24,16 +24,17 @@
 #define MAX_HOSTNAME     64
 #define TEMP_BUFFER_SIZE 512
 
-/*Codes_SRS_HTTPAPI_COMPACT_21_077: [ The HTTPAPI_ExecuteRequest shall wait, at least, 10 seconds for the SSL open process. ]*/
-#define MAX_OPEN_RETRY   600000
-/*Codes_SRS_HTTPAPI_COMPACT_21_084: [ The HTTPAPI_CloseConnection shall wait, at least, 10 seconds for the SSL close process. ]*/
-#define MAX_CLOSE_RETRY   600000
-/*Codes_SRS_HTTPAPI_COMPACT_21_079: [ The HTTPAPI_ExecuteRequest shall wait, at least, 20 seconds to send a buffer using the SSL connection. ]*/
-#define MAX_SEND_RETRY   600000
-/*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
-#define MAX_RECEIVE_RETRY   600000
+#define MILLISECONDS_PER_SECOND 1000
 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-#define RETRY_INTERVAL_IN_MICROSECONDS  1
+#define RETRY_INTERVAL_IN_MILLISECONDS  10
+/*Codes_SRS_HTTPAPI_COMPACT_21_077: [ The HTTPAPI_ExecuteRequest shall wait, at least, 10 seconds for the SSL open process. ]*/
+#define OPEN_RETRY_INTERVAL_COUNT   ((int32_t)30 * MILLISECONDS_PER_SECOND / RETRY_INTERVAL_IN_MILLISECONDS)
+/*Codes_SRS_HTTPAPI_COMPACT_21_084: [ The HTTPAPI_CloseConnection shall wait, at least, 10 seconds for the SSL close process. ]*/
+#define CLOSE_RETRY_INTERVAL_COUNT   ((int32_t)30 * MILLISECONDS_PER_SECOND / RETRY_INTERVAL_IN_MILLISECONDS)
+/*Codes_SRS_HTTPAPI_COMPACT_21_079: [ The HTTPAPI_ExecuteRequest shall wait, at least, 20 seconds to send a buffer using the SSL connection. ]*/
+#define SEND_RETRY_INTERVAL_COUNT   ((int32_t)30 * MILLISECONDS_PER_SECOND / RETRY_INTERVAL_IN_MILLISECONDS)
+/*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
+#define RECEIVE_RETRY_INTERVAL_COUNT   ((int32_t)30 * MILLISECONDS_PER_SECOND / RETRY_INTERVAL_IN_MILLISECONDS)
 
 #if !defined(MINIMAL_LOGERROR) && !defined(NO_LOGGING)
 DEFINE_ENUM_STRINGS(HTTPAPI_RESULT, HTTPAPI_RESULT_VALUES)
@@ -278,7 +279,7 @@ void HTTPAPI_CloseConnection(HTTP_HANDLE handle)
             else
             {
                 /*Codes_SRS_HTTPAPI_COMPACT_21_084: [ The HTTPAPI_CloseConnection shall wait, at least, 10 seconds for the SSL close process. ]*/
-                int countRetry = MAX_CLOSE_RETRY;
+                int32_t countRetry = CLOSE_RETRY_INTERVAL_COUNT;
                 while (http_instance->is_connected == 1)
                 {
                     xio_dowork(http_instance->xio_handle);
@@ -297,7 +298,7 @@ void HTTPAPI_CloseConnection(HTTP_HANDLE handle)
                     {
                         LogInfo("Waiting for TLS close connection");
                         /*Codes_SRS_HTTPAPI_COMPACT_21_086: [ The HTTPAPI_CloseConnection shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
                     }
                 }
             }
@@ -482,7 +483,7 @@ static int conn_receive(HTTP_HANDLE_DATA* http_instance, char* buffer, int count
             }
 
             /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-            ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+            ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
         }
     }
 
@@ -515,7 +516,7 @@ static int readLine(HTTP_HANDLE_DATA* http_instance, char* buf, const size_t max
     {
         char* destByte = buf;
         /*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
-        int countRetry = MAX_RECEIVE_RETRY;
+        int32_t countRetry = RECEIVE_RETRY_INTERVAL_COUNT;
         bool endOfSearch = false;
         resultLineSize = -1;
         while (!endOfSearch)
@@ -577,11 +578,12 @@ static int readLine(HTTP_HANDLE_DATA* http_instance, char* buf, const size_t max
                 if ((countRetry--) > 0)
                 {
                     /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                    ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                    ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
                 }
                 else
                 {
                     /*Codes_SRS_HTTPAPI_COMPACT_21_082: [ If the HTTPAPI_ExecuteRequest retries 20 seconds to receive the message without success, it shall fail and return HTTPAPI_READ_DATA_FAILED. ]*/
+                    save_data_dump();
                     LogError("Receive timeout. The HTTP request is incomplete");
                     endOfSearch = true;
                 }
@@ -633,7 +635,7 @@ static int skipN(HTTP_HANDLE_DATA* http_instance, size_t n)
     else
     {
         /*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
-        int countRetry = MAX_RECEIVE_RETRY;
+        int32_t countRetry = RECEIVE_RETRY_INTERVAL_COUNT;
         result = (int)n;
         while (n > 0)
         {
@@ -665,7 +667,7 @@ static int skipN(HTTP_HANDLE_DATA* http_instance, size_t n)
                     if ((countRetry--) > 0)
                     {
                         /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
                     }
                     else
                     {
@@ -734,7 +736,8 @@ static HTTPAPI_RESULT OpenXIOConnection(HTTP_HANDLE_DATA* http_instance)
                 /*Codes_SRS_HTTPAPI_COMPACT_21_033: [ If the whole process succeed, the HTTPAPI_ExecuteRequest shall retur HTTPAPI_OK. ]*/
                 result = HTTPAPI_OK;
                 /*Codes_SRS_HTTPAPI_COMPACT_21_077: [ The HTTPAPI_ExecuteRequest shall wait, at least, 10 seconds for the SSL open process. ]*/
-                int countRetry = MAX_OPEN_RETRY;
+                int32_t countRetry = OPEN_RETRY_INTERVAL_COUNT;
+
                 while ((http_instance->is_connected == 0) &&
                     (http_instance->is_io_error == 0))
                 {
@@ -750,7 +753,7 @@ static HTTPAPI_RESULT OpenXIOConnection(HTTP_HANDLE_DATA* http_instance)
                     else
                     {
                         /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
                     }
                 }
             }
@@ -780,7 +783,7 @@ static HTTPAPI_RESULT conn_send_all(HTTP_HANDLE_DATA* http_instance, const unsig
     else
     {
         /*Codes_SRS_HTTPAPI_COMPACT_21_079: [ The HTTPAPI_ExecuteRequest shall wait, at least, 20 seconds to send a buffer using the SSL connection. ]*/
-        int countRetry = MAX_SEND_RETRY;
+        uint32_t countRetry = SEND_RETRY_INTERVAL_COUNT;
         /*Codes_SRS_HTTPAPI_COMPACT_21_033: [ If the whole process succeed, the HTTPAPI_ExecuteRequest shall retur HTTPAPI_OK. ]*/
         result = HTTPAPI_OK;
         while ((http_instance->send_completed == 0) && (result == HTTPAPI_OK))
@@ -801,7 +804,7 @@ static HTTPAPI_RESULT conn_send_all(HTTP_HANDLE_DATA* http_instance, const unsig
             else
             {
                 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                ThreadAPI_Sleep(RETRY_INTERVAL_IN_MILLISECONDS);
             }
         }
     }
@@ -1178,6 +1181,8 @@ HTTPAPI_RESULT HTTPAPI_ExecuteRequest(HTTP_HANDLE handle, HTTPAPI_REQUEST_TYPE r
     size_t  bodyLength = 0;
     bool    chunked = false;
     HTTP_HANDLE_DATA* http_instance = (HTTP_HANDLE_DATA*)handle;
+
+    save_data_reset();
 
     /*Codes_SRS_HTTPAPI_COMPACT_21_034: [ If there is no previous connection, the HTTPAPI_ExecuteRequest shall return HTTPAPI_INVALID_ARG. ]*/
     /*Codes_SRS_HTTPAPI_COMPACT_21_037: [ If the request type is unknown, the HTTPAPI_ExecuteRequest shall return HTTPAPI_INVALID_ARG. ]*/
