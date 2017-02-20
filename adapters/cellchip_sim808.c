@@ -27,7 +27,8 @@
 
 #if (defined DEBUG) && (defined __MSP430__)
 // #define VERBOSE_MODEM_DEBUGGING 1
-#endif 
+#define TIGHT_MODEM_DEBUGGING 1
+#endif  
 
 // BKTODO: this is a singleton.  Could we support multiple connections?
 // BKTODO: can we use low power mode (DTR pin)?
@@ -344,7 +345,6 @@ uint8_t g_buffer[128];
 size_t g_buffer_index = 0;
 static void save_data_hack(const uint8_t *buffer, size_t size)
 {
-    printf(".");
     for (size_t i=0; i<size; i++)
     {
         g_buffer[g_buffer_index] = buffer[i];
@@ -352,7 +352,8 @@ static void save_data_hack(const uint8_t *buffer, size_t size)
         if (g_buffer_index == sizeof(g_buffer))
         {
             g_buffer_index = 0;
-            printf("\n");
+            //BKTODO; printf to putch
+            // printf("F\n");
         }
     }
 }
@@ -694,6 +695,17 @@ static int enqueue_current_step(CELLCHIP_SIM808_INSTANCE *cellchip)
     int result;
     const SEQUENCE_STEP *currentState = &cellchip->current_sequence[cellchip->current_sequence_step_index];
 
+#ifdef TIGHT_MODEM_DEBUGGING
+    if (cellchip->current_sequence == attach_sequence)
+    {
+        printf("a");
+    }
+    else
+    {
+        printf ("c");
+    }
+#endif
+
     CUSTOM_TA_RESULT_CODE_PARSER ta_parser_function;
     cellchip->ta_parser_success_state_index = 0;
     cellchip->ta_parser_failure_state_index = 0;
@@ -783,6 +795,9 @@ static void on_sequence_at_command_complete(void * context, TA_RESULT_CODE resul
     if (result_code != OK_3GPP)
     {
         action = SEQUENCE_ACTION_TEST_RETRY;
+#ifdef TIGHT_MODEM_DEBUGGING
+        printf("-");
+#endif
     }
     else if (currentState->response_verifier != NULL)
     {
@@ -819,6 +834,9 @@ static void on_sequence_at_command_complete(void * context, TA_RESULT_CODE resul
             }
             else
             {
+#ifdef TIGHT_MODEM_DEBUGGING
+                printf(".");
+#endif
 #ifdef VERBOSE_MODEM_DEBUGGING
                 printf("pausing before retry\n");
 #endif
@@ -963,6 +981,10 @@ int cellchip_attach_to_network(CELLCHIP_HANDLE handle, ON_CELLCHIP_ACTION_COMPLE
 static void internal_on_tcp_connect_complete(CELLCHIP_HANDLE handle, CELLCHIP_RESULT_CODE cellchip_result)
 {
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
+
+#ifdef TIGHT_MODEM_DEBUGGING
+    printf("*\n");
+#endif
 
     set_cellchip_connection_state(cellchip, cellchip_result == CELLCHIP_OK ? CELLCHIP_DATA_MODE : CELLCHIP_MODE_UNKNOWN);
 

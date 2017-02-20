@@ -22,6 +22,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 
 #if (defined DEBUG) && (defined __MSP430__)
+#define TIGHT_MODEM_DEBUGGING
 // #define LOG_AT_COMMANDS 1
 #endif 
 
@@ -317,6 +318,9 @@ static void modem_handshake (void * context_, TA_RESULT_CODE result_code_, const
         {
           case OK_3GPP:
             ++atrpc->handshake_machine_state;
+#ifdef TIGHT_MODEM_DEBUGGING   
+            printf("h");
+#endif
             break;
           case CONNECT_3GPP:
           case RING_3GPP:
@@ -905,7 +909,13 @@ int atrpc_open (ATRPC_HANDLE handle_, ON_ATRPC_OPEN_COMPLETE on_open_complete_, 
     /* Codes_SRS_ATRPC_27_049: [ atrpc_open() shall call (int)xio_open(XIO_HANDLE handle, ON_IO_OPEN_COMPLETE on_io_open_complete, void * on_io_open_complete_context, ON_BYTES_RECEIVED on_bytes_received, void * on_bytes_received_context, ON_IO_ERROR on_io_error, void * on_io_error_context) using the handle returned from xio_create() as the handle parameter, the incoming handle parameter as the on_bytes_received_context parameter, and the incoming handle parameter as the on_io_open_complete_context parameter. ] */
     else
     {
+
+#ifdef TIGHT_MODEM_DEBUGGING
+            printf("\nR\n");
+#endif
+
         // Must happen before call to open(), as these variables are affected by open() which can return immediately
+        // BKTODO: memset instead to save space
         handle_->echo_machine_state = 0;
         handle_->handshake_attempt = 0;
         handle_->handshake_machine_state = 0;
@@ -951,6 +961,9 @@ int atrpc_set_raw_data_callback(ATRPC_HANDLE handle, ON_ATRPC_RAW_DATA_RECEIVED 
 static void on_internal_send_raw_data_complete (void * context, IO_SEND_RESULT send_result)
 {
     ATRPC_INSTANCE *atrpc = (ATRPC_INSTANCE *)context;
+#ifdef TIGHT_MODEM_DEBUGGING
+    printf(">(%d)\n",send_result);
+#endif
     switch(send_result)
     {
         case IO_OPEN_OK:
@@ -975,6 +988,10 @@ int atrpc_send_raw_data(ATRPC_HANDLE handle, const unsigned char *data_buffer, s
 
     handle->on_raw_data_send_complete = on_raw_data_send_complete;
     handle->on_raw_data_send_complete_context = on_raw_data_send_complete_context;
+
+#ifdef TIGHT_MODEM_DEBUGGING
+    printf(">%d\n",data_buffer_length);
+#endif
 
     if (0 != xio_send(handle->modem_io, data_buffer, data_buffer_length, on_internal_send_raw_data_complete, handle))
     {
