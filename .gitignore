@@ -10,6 +10,7 @@
 *.jar
 [Dd]ebug/
 [Rr]elease/
+.launches/
 
 # TI MSP driverlib
 /inc/[Dd]river[Ll]ib/
