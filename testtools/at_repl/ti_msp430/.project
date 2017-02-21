@@ -26,6 +26,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>at_repl.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/at_repl.c</locationURI>
+		</link>
+		<link>
 			<name>atrpc.c</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/src/atrpc.c</locationURI>
