@@ -28,62 +28,62 @@
 		<link>
 			<name>at_repl.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/at_repl.c</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/at_repl.c</locationURI>
 		</link>
 		<link>
 			<name>atrpc.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/src/atrpc.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/atrpc.c</locationURI>
 		</link>
 		<link>
 			<name>cellchip_sim808.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/cellchip_sim808.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/cellchip_sim808.c</locationURI>
 		</link>
 		<link>
 			<name>dmapingpong_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/dmapingpong_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/dmapingpong_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>driverlib_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/driverlib_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/driverlib_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>optionhandler.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/src/optionhandler.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/optionhandler.c</locationURI>
 		</link>
 		<link>
 			<name>platform_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/platform_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/platform_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>tickcounter_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/tickcounter_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/tickcounter_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>uartio_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/adapters/uartio_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/uartio_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>vector.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/src/vector.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/vector.c</locationURI>
 		</link>
 		<link>
 			<name>xio.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/src/xio.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xio.c</locationURI>
 		</link>
 		<link>
 			<name>xlogging.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT1/src/xlogging.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xlogging.c</locationURI>
 		</link>
 	</linkedResources>
 	<variableList>

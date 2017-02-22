@@ -28,72 +28,72 @@
 		<link>
 			<name>atrpc.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/src/atrpc.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/atrpc.c</locationURI>
 		</link>
 		<link>
 			<name>cellchip_sim808.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/cellchip_sim808.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/cellchip_sim808.c</locationURI>
 		</link>
 		<link>
 			<name>dmapingpong_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/dmapingpong_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/dmapingpong_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>driverlib_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/driverlib_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/driverlib_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>main.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/samples/tlsio_connect/main.c</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/main.c</locationURI>
 		</link>
 		<link>
 			<name>optionhandler.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/src/optionhandler.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/optionhandler.c</locationURI>
 		</link>
 		<link>
 			<name>platform_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/platform_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/platform_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>threadapi_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/threadapi_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/threadapi_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>tickcounter_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/tickcounter_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/tickcounter_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>tlsio_sim800.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/tlsio_sim800.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/tlsio_sim800.c</locationURI>
 		</link>
 		<link>
 			<name>uartio_msp430.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/adapters/uartio_msp430.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/adapters/uartio_msp430.c</locationURI>
 		</link>
 		<link>
 			<name>vector.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/src/vector.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/vector.c</locationURI>
 		</link>
 		<link>
 			<name>xio.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/src/xio.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xio.c</locationURI>
 		</link>
 		<link>
 			<name>xlogging.c</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/src/xlogging.c</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/src/xlogging.c</locationURI>
 		</link>
 	</linkedResources>
 	<variableList>
