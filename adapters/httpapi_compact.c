@@ -583,7 +583,6 @@ static int readLine(HTTP_HANDLE_DATA* http_instance, char* buf, const size_t max
                 else
                 {
                     /*Codes_SRS_HTTPAPI_COMPACT_21_082: [ If the HTTPAPI_ExecuteRequest retries 20 seconds to receive the message without success, it shall fail and return HTTPAPI_READ_DATA_FAILED. ]*/
-                    save_data_dump();
                     LogError("Receive timeout. The HTTP request is incomplete");
                     endOfSearch = true;
                 }
@@ -1181,8 +1180,6 @@ HTTPAPI_RESULT HTTPAPI_ExecuteRequest(HTTP_HANDLE handle, HTTPAPI_REQUEST_TYPE r
     size_t  bodyLength = 0;
     bool    chunked = false;
     HTTP_HANDLE_DATA* http_instance = (HTTP_HANDLE_DATA*)handle;
-
-    save_data_reset();
 
     /*Codes_SRS_HTTPAPI_COMPACT_21_034: [ If there is no previous connection, the HTTPAPI_ExecuteRequest shall return HTTPAPI_INVALID_ARG. ]*/
     /*Codes_SRS_HTTPAPI_COMPACT_21_037: [ If the request type is unknown, the HTTPAPI_ExecuteRequest shall return HTTPAPI_INVALID_ARG. ]*/

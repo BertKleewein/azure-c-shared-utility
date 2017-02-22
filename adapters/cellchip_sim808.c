@@ -349,6 +349,15 @@ CELLCHIP_HANDLE cellchip_create()
 // BKTODO: remove
 uint8_t g_buffer[128];
 size_t g_buffer_index = 0;
+void save_data_dump()
+{
+    printf ("<in %d>\n", g_buffer_index);
+    for (int j = 0; j < g_buffer_index; j++)
+    {
+        _putchar(g_buffer[j]);
+    }
+    printf ("</in>\n");
+}
 static void save_data_hack(const uint8_t *buffer, size_t size)
 {
     for (size_t i=0; i<size; i++)
@@ -365,20 +374,6 @@ static void save_data_hack(const uint8_t *buffer, size_t size)
     }
 }
 
-void save_data_reset()
-{
-    g_buffer_index = 0;
-}
-
-void save_data_dump()
-{
-    printf ("<in %d>\n", g_buffer_index);
-    for (int j = 0; j < g_buffer_index; j++)
-    {
-        _putchar(g_buffer[j]);
-    }
-    printf ("</in>\n");
-}
 
 // BKTODO: there's no extrenal interface for getting out of data mode
 
