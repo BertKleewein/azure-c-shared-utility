@@ -15,7 +15,6 @@
 
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/uartio.h"
-#include "azure_c_shared_utility/dmapingpong.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4068)
@@ -24,9 +23,14 @@
 #define COUNTOF(x) (sizeof(x) / sizeof(x[0]))
 
 typedef struct UartIoState {
-    PingPongBuffer uart_rx_buffer;
-    PingPongBuffer uart_rxstatus_buffer;
     UARTIO_CONFIG config;
+    uint8_t * eusci_a1_cache_buffer;
+    uint8_t * eusci_a1_ring_buffer;
+    bool eusci_a1_ring_buffer_full;
+    size_t eusci_a1_ring_buffer_head;
+    bool eusci_a1_ring_buffer_overflow;
+    size_t eusci_a1_ring_buffer_tail;
+    uint8_t eusci_a1_rx_error;
     ON_BYTES_RECEIVED on_bytes_received;
     void * on_bytes_received_context;
     ON_IO_ERROR on_io_error;
@@ -122,11 +126,38 @@ static const IO_INTERFACE_DESCRIPTION _uartio_interface_description = {
 };
 #pragma diag_pop
 
-#define DMA_TRIGGERSOURCE_UART0_RX DMA_TRIGGERSOURCE_16 // From MSP430FR5969 datasheet.  Not in any headers
-#define DMA_CHANNEL_UART0_RX DMA_CHANNEL_0
-#define DMA_CHANNEL_UART0_RXSTATUS DMA_CHANNEL_1
-#define UART_REGISTER_RX EUSCI_A1_BASE + OFS_UCAxRXBUF
-#define UART_REGISTER_RXSTATUS  EUSCI_A1_BASE + OFS_UCAxSTATW
+
+/******************************************************************************
+ * Interrupt to signal SIM808 UART RX data is available
+ ******************************************************************************/
+#pragma vector = USCI_A1_VECTOR
+__interrupt void USCI_A1_ISR(void)
+{
+    switch (__even_in_range(UCA1IV, 8))
+    {
+    case 0x00: break;
+    case 0x02:
+#pragma diag_push
+        /*
+         * (ULP 10.1) ISR USCI_A1_ISR calls function EUSCI_A_UART_queryStatusFlags.
+         *
+         * Recommend moving function call away from ISR, or inlining the function, or using pragmas
+         */
+#pragma diag_suppress 1538
+        _uartio.eusci_a1_rx_error |= EUSCI_A_UART_queryStatusFlags(EUSCI_A1_BASE, (EUSCI_A_UART_FRAMING_ERROR | EUSCI_A_UART_OVERRUN_ERROR | EUSCI_A_UART_PARITY_ERROR));
+        _uartio.eusci_a1_ring_buffer[_uartio.eusci_a1_ring_buffer_head] = EUSCI_A_UART_receiveData(EUSCI_A1_BASE);
+#pragma diag_pop
+        _uartio.eusci_a1_ring_buffer_overflow = _uartio.eusci_a1_ring_buffer_full;
+        _uartio.eusci_a1_ring_buffer_head = ((_uartio.config.ring_buffer_size - 1) & (_uartio.eusci_a1_ring_buffer_head + 1));
+        _uartio.eusci_a1_ring_buffer_full = ((_uartio.eusci_a1_ring_buffer_head == _uartio.eusci_a1_ring_buffer_tail) || _uartio.eusci_a1_ring_buffer_overflow);
+        break;
+    case 0x04: break;
+    case 0x06: break;
+    case 0x08: break;
+    default: __never_executed();
+    }
+}
+
 
 /******************************************************************************
  * Calculate the secondary modulation register value
@@ -302,9 +333,11 @@ uartio_close(
         LogError("uart not open");
         result = __FAILURE__;
     } else {
+        // Wait for outstanding UART transactions to complete
+        for (; 0x00 != EUSCI_A_UART_queryStatusFlags(EUSCI_A1_BASE, EUSCI_A_UART_BUSY););
+        EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+        EUSCI_A_UART_disable(EUSCI_A1_BASE);
         _uartio.open = false;
-        pingpong_disable(&_uartio.uart_rx_buffer);
-        pingpong_disable(&_uartio.uart_rxstatus_buffer);
         on_io_close_complete_(callback_context_);
         result = 0;
     }
@@ -333,18 +366,19 @@ uartio_create(
     } else if (NULL != _singleton) {
         LogError("invalid arg to uartio_create");
         result = NULL;
-    } else
-#endif
-    if (0 != pingpong_alloc(&_uartio.uart_rx_buffer)) {
-        LogError("pingpong_alloc failed");
+    // Confirm `uartio_config->ring_buffer_size` is a power of 2
+    } else if (0 != (uartio_config->ring_buffer_size & (uartio_config->ring_buffer_size - 1))) {
         result = NULL;
-    } else if (0 != pingpong_alloc(&_uartio.uart_rxstatus_buffer)) {
-        pingpong_free(&_uartio.uart_rx_buffer);
-        LogError("pingpong_alloc failed");
+    } else 
+#endif
+	if (NULL == (_uartio.eusci_a1_ring_buffer = (uint8_t *)malloc(uartio_config->ring_buffer_size))) {
+        result = NULL;
+    } else if (NULL == (_uartio.eusci_a1_cache_buffer = (uint8_t *)malloc(uartio_config->ring_buffer_size))) {
+        free(_uartio.eusci_a1_ring_buffer);
         result = NULL;
     } else {
         _uartio.config.baud_rate = uartio_config->baud_rate;
-        _uartio.config.ring_buffer_size = uartio_config->ring_buffer_size;  // BKTODO:remove
+        _uartio.config.ring_buffer_size = uartio_config->ring_buffer_size;
         _singleton = &_uartio;
         result = _singleton;
     }
@@ -367,10 +401,9 @@ uartio_destroy(
     {
         // Best effort close, cannot check error conditions
         (void)uartio_close(uartio_, internal_uarito_close_callback_required_when_closed_from_uartio_destroy, NULL);
-        pingpong_free(&_uartio.uart_rx_buffer);
-        pingpong_free(&_uartio.uart_rxstatus_buffer);
-        
         _singleton = NULL;
+        free(_uartio.eusci_a1_ring_buffer);
+        free(_uartio.eusci_a1_cache_buffer);
     }
 }
 
@@ -399,49 +432,35 @@ uartio_dowork(
     if (!_uartio.open) {
         LogError("Closed handle passed to uartio_dowork!");
     } else {
-        if (pingpong_check_for_data(&_uartio.uart_rx_buffer))
-        {
-            uint8_t *rxBuffer, *rxStatusBuffer;
-            size_t rxSize, rxStatusSize;
+        uint8_t error;
+        size_t index = 0;
 
-            // because we can't atomically disable both DMA channels, 
-            // there's a change that we'll get slightly out-of-sync if
-            // an interrupt happens between the disable calls.
-            // Since we have the status buffer just for error conditions,
-            // we don't care as long as we see it _sometime_.
-            // This is because a single error would abort the entire 
-            // transaction anyway.
+        // BEGIN CRITICAL SECTION
+        EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT); {
+            error = (_uartio.eusci_a1_ring_buffer_overflow | _uartio.eusci_a1_rx_error);
+            _uartio.eusci_a1_ring_buffer_overflow = false;
+            _uartio.eusci_a1_rx_error = 0x00;
 
-            // BKTODO; why is the rxstatus buffer always empty?
-            pingpong_disable(&_uartio.uart_rxstatus_buffer);
-            pingpong_disable(&_uartio.uart_rx_buffer);
-
-            pingpong_flipflop(&_uartio.uart_rx_buffer, &rxBuffer, &rxSize);
-            pingpong_flipflop(&_uartio.uart_rxstatus_buffer, &rxStatusBuffer, &rxStatusSize);
-
-            pingpong_enable(&_uartio.uart_rx_buffer);
-            pingpong_enable(&_uartio.uart_rxstatus_buffer);
-
-            uint8_t *p = rxStatusBuffer;
-            bool error = false;
-            for (size_t i = rxStatusSize; i != 0; i--)
-            {
-                if (*p & (EUSCI_A_UART_FRAMING_ERROR | EUSCI_A_UART_OVERRUN_ERROR | EUSCI_A_UART_PARITY_ERROR))
-                {
-                    error = true;
-                    break;
+            if ( (_uartio.eusci_a1_ring_buffer_tail != _uartio.eusci_a1_ring_buffer_head)
+              || _uartio.eusci_a1_ring_buffer_full
+            ) {
+                // correct in case of overflow - OVERFLOW BYTES ARE LOST
+                if (_uartio.eusci_a1_ring_buffer_full) {
+                    _uartio.eusci_a1_ring_buffer_tail = _uartio.eusci_a1_ring_buffer_head;
                 }
-            }
 
-            if (error)
-            {
-                _uartio.on_io_error(_uartio.on_io_error_context);
+                do {
+                    _uartio.eusci_a1_cache_buffer[index] = _uartio.eusci_a1_ring_buffer[_uartio.eusci_a1_ring_buffer_tail];
+                    _uartio.eusci_a1_ring_buffer_tail = ((_uartio.config.ring_buffer_size - 1) & (_uartio.eusci_a1_ring_buffer_tail + 1));
+                    ++index;
+                } while (_uartio.eusci_a1_ring_buffer_head != _uartio.eusci_a1_ring_buffer_tail);
             }
-            else
-            {
-                _uartio.on_bytes_received(_uartio.on_bytes_received_context, rxBuffer, rxSize);
-            }
-        }
+            _uartio.eusci_a1_ring_buffer_full = false;
+        } EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+        // END CRITICAL SECTION
+
+        if (0 != index) { _uartio.on_bytes_received(_uartio.on_bytes_received_context, _uartio.eusci_a1_cache_buffer, index); }
+        // BKTODO if (0x00 != error) { _uartio.on_io_error(_uartio.on_io_error_context); }
     }
 }
 
@@ -497,18 +516,17 @@ uartio_open(
         if (!EUSCI_A_UART_init(EUSCI_A1_BASE, &eusci_a_parameters)) {
             result = __FAILURE__;
         } else {
+            _uartio.eusci_a1_ring_buffer_tail = _uartio.eusci_a1_ring_buffer_head;
+            _uartio.eusci_a1_ring_buffer_full = false;
+            _uartio.eusci_a1_ring_buffer_overflow = false;
+            _uartio.eusci_a1_rx_error = 0x00;
             _uartio.open = true;
             EUSCI_A_UART_enable(EUSCI_A1_BASE);
-            EUSCI_A_UART_disableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
+            EUSCI_A_UART_enableInterrupt(EUSCI_A1_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT);
             _uartio.on_bytes_received = on_bytes_received_;
             _uartio.on_bytes_received_context = on_bytes_received_context_;
             _uartio.on_io_error = on_io_error_;
             _uartio.on_io_error_context = on_io_error_context_;
-            
-            pingpong_attach_to_register(&_uartio.uart_rx_buffer, DMA_CHANNEL_UART0_RX, DMA_TRIGGERSOURCE_UART0_RX, UART_REGISTER_RX );
-            pingpong_attach_to_register(&_uartio.uart_rxstatus_buffer, DMA_CHANNEL_UART0_RXSTATUS, DMA_TRIGGERSOURCE_UART0_RX, UART_REGISTER_RXSTATUS);
-            pingpong_enable(&_uartio.uart_rx_buffer);
-            pingpong_enable(&_uartio.uart_rxstatus_buffer);
             result = 0;
         }
     }
