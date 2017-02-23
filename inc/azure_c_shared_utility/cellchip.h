@@ -42,10 +42,9 @@ MOCKABLE_FUNCTION(, void, cellchip_destroy, CELLCHIP_HANDLE, handle);
 MOCKABLE_FUNCTION(, int, cellchip_open, CELLCHIP_HANDLE, handle, ON_CELLCHIP_OPEN_COMPLETE, on_open_complete, void *, on_open_complete_context, ON_CELLCHIP_STATE_CHANGE, on_state_change, void *, on_state_change_context, ON_CELLCHIP_DATA_RECEIVED, on_data_received, void *, on_data_received_context);
 MOCKABLE_FUNCTION(, int, cellchip_close, CELLCHIP_HANDLE, handle);
 MOCKABLE_FUNCTION(, void, cellchip_dowork, CELLCHIP_HANDLE, handle);
-// BKTODO: sim808_attention will eventaully go away
+// BKTODO: cellchip_attention will eventaully go away
 MOCKABLE_FUNCTION(, int, cellchip_attention, CELLCHIP_HANDLE, handle, const unsigned char *, command_string, size_t, command_string_length, size_t, timeout_ms, unsigned char *, ta_response_buffer, size_t, ta_response_buffer_size, ON_ATRPC_TA_RESPONSE, on_ta_response, void *, ta_response_context, CUSTOM_TA_RESULT_CODE_PARSER, result_code_parser, void *, result_code_parser_context);
 MOCKABLE_FUNCTION(, int, cellchip_attach_to_network, CELLCHIP_HANDLE, handle, ON_CELLCHIP_ACTION_COMPLETE, on_action_complete, void*, on_action_complete_context);
-MOCKABLE_FUNCTION(, int, cellchip_tcp_connect, CELLCHIP_HANDLE, handle, ON_CELLCHIP_ACTION_COMPLETE, on_action_complete, void*, on_action_complete_context);
 MOCKABLE_FUNCTION(, int, cellchip_tls_connect, CELLCHIP_HANDLE, handle, const char *, host, uint16_t, port, ON_CELLCHIP_ACTION_COMPLETE, on_action_complete, void*, on_action_complete_context);
 MOCKABLE_FUNCTION( ,int, cellchip_send, CELLCHIP_HANDLE, handle, const uint8_t*, buffer, size_t, size, ON_CELLCHIP_SEND_COMPLETE, on_send_complete, void*, on_send_complete_context);
 

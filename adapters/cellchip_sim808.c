@@ -104,9 +104,6 @@ typedef enum {
     SEQUENCE_ACTION_SUBMIT_CURRENT
 } SEQUENCE_ACTION;
 
-// BKTODO: how to record logs for post-mortem debugging?
-// BKTODO: pack this in
-
 // To build our sequence lists, we build up layers of simple macros that define each step.
 // The macros that start with _ are meant to be used from other macros.
 #define _COMMAND(x) x, sizeof(x)-1  // hardcoded string command
@@ -379,7 +376,6 @@ static void save_data_hack(const uint8_t *buffer, size_t size)
 
 static void on_atrpc_raw_data_received(void *context, const uint8_t *buffer, size_t size)
 {
-    // BKTODO: what's the convention for checking context inside callbacks?
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)context;
     save_data_hack(buffer, size);
 
@@ -1010,12 +1006,6 @@ static void internal_on_tcp_connect_complete(CELLCHIP_HANDLE handle, CELLCHIP_RE
         cellchip->on_connect_complete(cellchip->on_connect_complete_context, cellchip_result);
     }
     
-}
-
-// BKTODO: deprecate this
-int cellchip_tcp_connect(CELLCHIP_HANDLE handle, ON_CELLCHIP_ACTION_COMPLETE on_action_complete, void* on_action_complete_context)
-{
-    return start_sequence(handle, tcp_connect_sequence, COUNTOF(tcp_connect_sequence), on_action_complete, on_action_complete_context);
 }
 
 int cellchip_tls_connect(CELLCHIP_HANDLE handle, const char * host, uint16_t port, ON_CELLCHIP_ACTION_COMPLETE on_connect_complete, void* on_connect_complete_context)

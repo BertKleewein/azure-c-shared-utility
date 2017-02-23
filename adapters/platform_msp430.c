@@ -21,9 +21,6 @@
 
 // BKTODO: ints are probably 16 bits here.  Look at warnings and change precision
 
-
-// BKTODO: can I build with printf support=minimal or with dude's minimal printf code?
-
 #define TURBO_BUTTON 1
 #define LUDICROUS_SPEED 0
 

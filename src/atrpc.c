@@ -76,7 +76,7 @@ typedef struct ATRPC_INSTANCE_TAG
 } ATRPC_INSTANCE;
 
 #define UART_BAUDRATE 9600
-#define UART_RINGBUFFER_SIZE 32 // BKTODO: remove
+#define UART_RINGBUFFER_SIZE 32 
 
 static bool autobaud_negotiation_machine (ATRPC_HANDLE handle_, unsigned char byte_)
 {
@@ -528,7 +528,6 @@ static void modem_on_io_error (void * context_)
 }
 
 
-// BKTODO; error when outoing buffer is full
 static void modem_on_io_open_complete (void * context_, IO_OPEN_RESULT open_result_)
 {
     ATRPC_INSTANCE * atrpc = (ATRPC_INSTANCE *)context_;
@@ -915,15 +914,10 @@ int atrpc_open (ATRPC_HANDLE handle_, ON_ATRPC_OPEN_COMPLETE on_open_complete_, 
 #endif
 
         // Must happen before call to open(), as these variables are affected by open() which can return immediately
-        // BKTODO: memset instead to save space
-        handle_->echo_machine_state = 0;
-        handle_->handshake_attempt = 0;
-        handle_->handshake_machine_state = 0;
-        handle_->handshake_complete = false;
+        memset(handle_, sizeof(handle_), 0);
         handle_->modem_status = MODEM_IO_OPENING;
         handle_->on_open_complete = on_open_complete_;
         handle_->on_open_complete_context = on_open_complete_context_;
-        handle_->ta_result_code_machine_state = 0;
         handle_->status = ATRPC_ATMODE_READY;
 
         if (0 != xio_open(handle_->modem_io, modem_on_io_open_complete, handle_, modem_on_bytes_received, handle_, modem_on_io_error, handle_))
