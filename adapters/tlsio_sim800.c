@@ -18,8 +18,6 @@ int tlsio_sim800_send(CONCRETE_IO_HANDLE handle, const void* buffer, size_t size
 void tlsio_sim800_dowork(CONCRETE_IO_HANDLE handle);
 int tlsio_sim800_setoption(CONCRETE_IO_HANDLE handle, const char* optionName, const void* value);
 OPTIONHANDLER_HANDLE tlsio_sim800_retrieveoptions(CONCRETE_IO_HANDLE handle);
-// BKTODO: I can use unsignedIntToString from crtabstractions.h
-
 
 static const IO_INTERFACE_DESCRIPTION tlsio_sim800_interface_description =
 {

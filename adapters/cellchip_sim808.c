@@ -21,6 +21,7 @@
 #include "azure_c_shared_utility/cellchip.h"
 #include "azure_c_shared_utility/atrpc.h"
 #include "azure_c_shared_utility/tickcounter.h"
+#include "azure_c_shared_utility/crt_abstractions.h"
 #include "msp430.h"
 
 #define COUNTOF(x) (sizeof(x)/sizeof(x[0]))
@@ -618,29 +619,6 @@ static bool safe_strcat(char *dest, const char *src, size_t destSize)
     return (spaceLeft != 0) || (*ps == 0);
 }
 
-// build a string from an integer going backwards
-static char *i2s(uint16_t i, char *s, size_t c)
-{
-    // point to last character
-    char *p = s+(c-1);
-    // terminate the string
-    *(p--) = 0; c--;
-    if (c && i == 0)
-    {
-        *(p--) = '0';
-        c--;
-    }
-    while (c && i)
-    {
-        uint8_t digit = i - ((i / 10) * 10);
-        i = (i - digit) / 10;
-        *(p--) = digit + '0';
-        c--;
-    }
-
-    return p;
-}
-
 // BKTODO: APN to options
 #define APN_NAME "wholesale"
 // BKTODO: make TLS a parameter
@@ -671,9 +649,9 @@ static int create_custom_command_string(CELLCHIP_SIM808_INSTANCE *cellchip, cons
     {
         //"+CIPSTART=\"TCP\",\"40.118.160.XXX\",7"
         dest[0] = 0;
-        char s[10];
-        char *portstring = i2s(cellchip->port, s, COUNTOF(s))+1;    // BKTODO: why +1?
-        if (safe_strcat(dest, "+CIPSTART=\"", COUNTOF(cellchip->custom_command_string)) &&
+        char portstring[10];
+        if ((0 == unsignedIntToString(portstring, COUNTOF(portstring), cellchip->port)) &&
+            safe_strcat(dest, "+CIPSTART=\"", COUNTOF(cellchip->custom_command_string)) &&
             safe_strcat(dest, PROTOCOL, COUNTOF(cellchip->custom_command_string)) &&
             safe_strcat(dest, "\",\"", COUNTOF(cellchip->custom_command_string)) &&
             safe_strcat(dest, cellchip->host, COUNTOF(cellchip->custom_command_string)) &&

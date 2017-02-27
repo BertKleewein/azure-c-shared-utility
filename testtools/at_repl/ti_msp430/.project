@@ -41,6 +41,11 @@
 			<locationURI>PARENT-3-PROJECT_LOC/adapters/cellchip_sim808.c</locationURI>
 		</link>
 		<link>
+			<name>crt_abstractions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/src/crt_abstractions.c</locationURI>
+		</link>
+		<link>
 			<name>driverlib_msp430.c</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/adapters/driverlib_msp430.c</locationURI>
