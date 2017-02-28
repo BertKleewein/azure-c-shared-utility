@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
@@ -22,7 +23,7 @@
 #include "azure_c_shared_utility/httpapi.h"
 
 #define MAX_HOSTNAME     64
-#define TEMP_BUFFER_SIZE 512
+#define HTTP_TEMP_BUFFER_SIZE 512
 
 #define MILLISECONDS_PER_SECOND 1000
 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
@@ -822,7 +823,7 @@ const char* get_request_type(HTTPAPI_REQUEST_TYPE requestType)
 static HTTPAPI_RESULT SendHeadsToXIO(HTTP_HANDLE_DATA* http_instance, HTTPAPI_REQUEST_TYPE requestType, const char* relativePath, HTTP_HEADERS_HANDLE httpHeadersHandle, size_t headersCount)
 {
     HTTPAPI_RESULT result;
-    char    buf[TEMP_BUFFER_SIZE];
+    char    buf[HTTP_TEMP_BUFFER_SIZE];
     int     ret;
 
     //Send request
@@ -891,13 +892,13 @@ static HTTPAPI_RESULT SendContentToXIO(HTTP_HANDLE_DATA* http_instance, const un
 static HTTPAPI_RESULT RecieveHeaderFromXIO(HTTP_HANDLE_DATA* http_instance, unsigned int* statusCode)
 {
     HTTPAPI_RESULT result;
-    char    buf[TEMP_BUFFER_SIZE];
+    char    buf[HTTP_TEMP_BUFFER_SIZE];
     int     ret;
 
     http_instance->is_io_error = 0;
 
     //Receive response
-    if (readLine(http_instance, buf, TEMP_BUFFER_SIZE) < 0)
+    if (readLine(http_instance, buf, HTTP_TEMP_BUFFER_SIZE) < 0)
     {
         /*Codes_SRS_HTTPAPI_COMPACT_21_032: [ If the HTTPAPI_ExecuteRequest cannot read the message with the request result, it shall return HTTPAPI_READ_DATA_FAILED. ]*/
         /*Codes_SRS_HTTPAPI_COMPACT_21_082: [ If the HTTPAPI_ExecuteRequest retries 20 seconds to receive the message without success, it shall fail and return HTTPAPI_READ_DATA_FAILED. ]*/
@@ -930,7 +931,7 @@ static HTTPAPI_RESULT RecieveHeaderFromXIO(HTTP_HANDLE_DATA* http_instance, unsi
 static HTTPAPI_RESULT RecieveContentInfoFromXIO(HTTP_HANDLE_DATA* http_instance, HTTP_HEADERS_HANDLE responseHeadersHandle, size_t* bodyLength, bool* chunked)
 {
     HTTPAPI_RESULT result;
-    char    buf[TEMP_BUFFER_SIZE];
+    char    buf[HTTP_TEMP_BUFFER_SIZE];
     const char* substr;
     char* whereIsColon;
     int lengthInMsg;
@@ -1008,7 +1009,7 @@ static HTTPAPI_RESULT RecieveContentInfoFromXIO(HTTP_HANDLE_DATA* http_instance,
 static HTTPAPI_RESULT ReadHTTPResponseBodyFromXIO(HTTP_HANDLE_DATA* http_instance, size_t bodyLength, bool chunked, BUFFER_HANDLE responseContent)
 {
     HTTPAPI_RESULT result;
-    char    buf[TEMP_BUFFER_SIZE];
+    char    buf[HTTP_TEMP_BUFFER_SIZE];
     const unsigned char* receivedContent;
 
     http_instance->is_io_error = 0;

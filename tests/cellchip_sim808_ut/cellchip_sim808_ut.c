@@ -27,6 +27,8 @@ static TEST_MUTEX_HANDLE g_dllByDll;
 // #include SDK dependencies here
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/atrpc.h"
+#include "azure_c_shared_utility/tickcounter.h"
+#include "../adapters/msp430.h"
 #undef ENABLE_MOCKS
 
 // Under test #includes

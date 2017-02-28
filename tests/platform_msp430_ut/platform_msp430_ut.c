@@ -28,14 +28,23 @@
 
 // External library dependencies
 #include "driverlib.h"
+uint16_t WDTCTL;
+uint16_t PAOUT;
+uint16_t PADIR;
+uint16_t PBOUT;
+uint16_t PBDIR;
+uint16_t PM5CTL0;
+
+
 
 static TEST_MUTEX_HANDLE g_testByTest;
 static TEST_MUTEX_HANDLE g_dllByDll;
 
 #define ENABLE_MOCKS
   // `#include` SDK dependencies here
-  #include "azure_c_shared_utility/tickcounter_msp430.h"
+  #include "../adapters/tickcounter_msp430.h"
   #include "azure_c_shared_utility/tlsio.h"
+  #include "../adapters/tlsio_sim800.h"
 #undef ENABLE_MOCKS
 
 #define MOCK_TICKCOUNTER (TICK_COUNTER_HANDLE)0x19790917
@@ -46,6 +55,7 @@ static TEST_MUTEX_HANDLE g_dllByDll;
 #define ENABLE_MOCKS
 
   // ** Mocking gpio.h module (driverlib.h)
+  // BKTODO: these could use ENABLE_MOCKS if they were defined correctly in driverlib.h
   MOCK_FUNCTION_WITH_CODE(, uint8_t, GPIO_getInputPinValue, uint8_t, selectedPort, uint16_t, selectedPins)
   MOCK_FUNCTION_END(GPIO_INPUT_PIN_LOW);
   MOCK_FUNCTION_WITH_CODE(, void, GPIO_setAsInputPin, uint8_t, selectedPort, uint16_t, selectedPins)
@@ -59,6 +69,12 @@ static TEST_MUTEX_HANDLE g_dllByDll;
   MOCK_FUNCTION_WITH_CODE(, void, GPIO_setOutputLowOnPin, uint8_t, selectedPort, uint16_t, selectedPins)
   MOCK_FUNCTION_END();
 
+  MOCK_FUNCTION_WITH_CODE(, void, CS_setDCOFreq, uint16_t, dcorsel, uint16_t, dcofsel)
+  MOCK_FUNCTION_END();
+  MOCK_FUNCTION_WITH_CODE(, void, CS_initClockSignal, uint8_t, selectedClockSignal, uint16_t, clockSource, uint16_t, clockSourceDivider)
+  MOCK_FUNCTION_END();
+  MOCK_FUNCTION_WITH_CODE(, void, __bis_SR_register, uint16_t, reg)
+  MOCK_FUNCTION_END();
 #undef ENABLE_MOCKS
 
 DEFINE_ENUM_STRINGS(UMOCK_C_ERROR_CODE, UMOCK_C_ERROR_CODE_VALUES)

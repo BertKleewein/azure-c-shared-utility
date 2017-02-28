@@ -59,7 +59,7 @@ non_mocked_free(
 #define ENABLE_MOCKS
   // #include SDK dependencies here
   #include "azure_c_shared_utility/gballoc.h"
-  #include "azure_c_shared_utility/tickcounter_msp430.h"
+  #include "../adapters/tickcounter_msp430.h"    // BKTODO: shouldn't be here.
   #include "azure_c_shared_utility/uartio.h"
   #include "azure_c_shared_utility/vector.h"
 #undef ENABLE_MOCKS
@@ -84,6 +84,10 @@ static ON_IO_OPEN_COMPLETE intercepted_xio_on_io_open_complete;
 static void * intercepted_xio_on_io_open_context;
 static ON_SEND_COMPLETE intercepted_xio_on_send_complete;
 static void * intercepted_xio_on_send_context;
+
+void dump_recent_bytes()
+{
+}
 
 static
 TICK_COUNTER_HANDLE

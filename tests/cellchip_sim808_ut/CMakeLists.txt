@@ -12,6 +12,7 @@ set(${theseTestsName}_test_files
 
 set(${theseTestsName}_c_files
     ../../adapters/cellchip_sim808.c
+    ../../src/crt_abstractions.c
 )
 
 set(${theseTestsName}_h_files

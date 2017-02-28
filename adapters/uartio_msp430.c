@@ -221,7 +221,7 @@ secondModulationRegisterValueFromFractionalPortion (
     {
         if (fractional_portion > lookup[i][0])
         {
-            mask_UCBRSx = lookup[i][0];
+            mask_UCBRSx = (uint8_t)lookup[i][0];
             break;
         }
     }

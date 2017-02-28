@@ -21,6 +21,8 @@
 #include "azure_c_shared_utility/vector.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+void dump_recent_bytes();   // BKTODO: remove
+
 #if (defined DEBUG) && (defined __MSP430__)
 #define TIGHT_MODEM_DEBUGGING
 // #define LOG_AT_COMMANDS 1

@@ -51,6 +51,17 @@
 
 #define UCA1IV (0x2020)
 
+#define WDTPW (2)
+#define WDTHOLD (3)
+#define CS_DCORSEL_1 (4)
+#define CS_DCOFSEL_4 (5)
+#define CS_MCLK (6)
+#define CS_DCOCLK_SELECT (7)
+#define CS_CLOCK_DIVIDER_2 (8)
+#define LOCKLPM5 (14)
+#define GIE (15)
+
+
 static inline
 uint16_t
 interrupt_switch(
@@ -82,6 +93,13 @@ interrupt_switch(
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern uint16_t WDTCTL;
+extern uint16_t PAOUT;
+extern uint16_t PADIR;
+extern uint16_t PBOUT;
+extern uint16_t PBDIR;
+extern uint16_t PM5CTL0;
 
 typedef struct EUSCI_A_UART_initParam {
     uint8_t selectClockSource;
@@ -255,6 +273,28 @@ void
 USCI_A1_ISR (
     void
 );
+
+extern
+void 
+CS_setDCOFreq(
+    uint16_t dcorsel,
+    uint16_t dcofsel
+);
+  
+extern
+void
+CS_initClockSignal(
+    uint8_t selectedClockSignal,
+    uint16_t clockSource,
+    uint16_t clockSourceDivider
+);
+
+extern
+void
+__bis_SR_register(
+    uint16_t reg
+);
+
 
 #ifdef __cplusplus
 }

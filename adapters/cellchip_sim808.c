@@ -277,13 +277,19 @@ typedef struct CELLCHIP_SIM808_INSTANCE_TAG
     CELLCHIP_CONNECTION_STATE connection_state;
     ON_CELLCHIP_SEND_COMPLETE on_send_complete;
     void* on_send_complete_context;
-    
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+#endif // _MSC_VER
     union 
     {
         // Command and response are never used at the same time, so we use teh same memory for both.  Pretty tricky, eh?
         uint8_t default_response_buffer[DEFAULT_RESPONSE_BUFFER_SIZE];
         char  custom_command_string[MAX_CUSTOM_COMMAND_BUFFER_SIZE];
     };
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif // _MSC_VER
     uint8_t retry_count;
     tickcounter_ms_t retry_time;
     const SEQUENCE_STEP *current_sequence;
@@ -988,7 +994,8 @@ static void internal_on_tcp_connect_complete(CELLCHIP_HANDLE handle, CELLCHIP_RE
 #ifdef TIGHT_MODEM_DEBUGGING
     if (cellchip_result == CELLCHIP_OK)
     {
-        printf("*\n");
+        printf("*\n");
+
     }
     else
     {

@@ -159,7 +159,7 @@ umockvalue_free_Timer_A_initContinuousModeParam(
 #undef ENABLE_MOCKS
 
 // Under test `#includes`
-#include "azure_c_shared_utility/tickcounter_msp430.h"
+#include "../adapters/tickcounter_msp430.h"
 
 #define ENABLE_MOCKS
 
