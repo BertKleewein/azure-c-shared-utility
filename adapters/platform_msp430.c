@@ -256,6 +256,11 @@ int msp430_exit_sim808_data_mode()
     return result;
 }
 
+bool msp_430_is_sim808_powered_up()
+{
+    return (GPIO_INPUT_PIN_HIGH == GPIO_getInputPinValue(SIM808_STATUS_PIN));
+}
+
 void platform_deinit (void) {
     msp430_turn_off_sim808();
     timer_a3_deinit();

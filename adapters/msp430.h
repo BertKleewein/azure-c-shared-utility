@@ -18,6 +18,7 @@ MOCKABLE_FUNCTION(, int, msp430_turn_on_sim808);
 MOCKABLE_FUNCTION(, int, msp430_turn_off_sim808);
 MOCKABLE_FUNCTION(, int, msp430_power_cycle_sim808);
 MOCKABLE_FUNCTION(, int, msp430_exit_sim808_data_mode);
+MOCKABLE_FUNCTION(, _Bool, msp_430_is_sim808_powered_up);
 
 #ifdef __cplusplus
   }

@@ -716,6 +716,7 @@ int atrpc_close (ATRPC_HANDLE handle_)
     }
     else
 #endif
+    dump_recent_bytes();
     if (ATRPC_CLOSED == handle_->status)
     {
         /* Codes_SRS_ATRPC_27_014: [ If atrpc_open() has not been called on the handle, atrpc_close() shall do nothing and return 0. ] */
@@ -981,7 +982,7 @@ int atrpc_send_raw_data(ATRPC_HANDLE handle, const unsigned char *data_buffer, s
     handle->on_raw_data_send_complete_context = on_raw_data_send_complete_context;
 
 #ifdef TIGHT_MODEM_DEBUGGING
-    printf(">%d\n",data_buffer_length);
+    //printf(">%d\n",data_buffer_length);
 #endif
 
     if (0 != xio_send(handle->modem_io, data_buffer, data_buffer_length, on_internal_send_raw_data_complete, handle))

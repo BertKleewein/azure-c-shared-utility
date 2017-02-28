@@ -206,7 +206,7 @@ static const SEQUENCE_STEP attach_sequence[] =
     CMD("+CIPCCFG=5,2,1024,0,0,1460,50"),
     // Configure DTR to bring unit out of raw mode
     CMD("&D1"),
-    // Get data manually.  unknown.  parameter is undefined
+    // AUtomatically push data from the sim808 to the host
     CMD("+CIPRXGET=0"),
     // Disable TCP keepalive.  BKTODO: we need keeplive
     CMD("+CIPTKA=0"),
@@ -241,6 +241,8 @@ static const SEQUENCE_STEP tcp_connect_sequence[] =
     CUSTOM_CMD(CC_CIP_START),
     // Verify that we're ready to send 
     CMD("+CIPSEND?"),
+    // and send
+    CMD("+CIPSEND"),
 };
 
 // Maximum number of retries before a command is considered to be failed.
@@ -345,16 +347,16 @@ CELLCHIP_HANDLE cellchip_create()
 }
 
 // BKTODO: remove
-uint8_t g_buffer[128];
+#define OUTPUT_BUFFER_SIZE 256
+uint8_t g_buffer[OUTPUT_BUFFER_SIZE + 1];
 size_t g_buffer_index = 0;
-void save_data_dump()
+void dump_recent_bytes()
 {
-    printf ("<in %d>\n", g_buffer_index);
-    for (int j = 0; j < g_buffer_index; j++)
-    {
-        _putchar(g_buffer[j]);
-    }
-    printf ("</in>\n");
+  printf ("<in %d>\n", g_buffer_index);
+    g_buffer[g_buffer_index] = 0;
+    printf((const char*)g_buffer);
+    printf ("\n</in>\n");
+    g_buffer_index = 0;
 }
 static void save_data_hack(const uint8_t *buffer, size_t size)
 {
@@ -362,10 +364,20 @@ static void save_data_hack(const uint8_t *buffer, size_t size)
     {
         g_buffer[g_buffer_index] = buffer[i];
         g_buffer_index++;
-        if (g_buffer_index == sizeof(g_buffer))
+        if (g_buffer_index > 5 &&
+            g_buffer[g_buffer_index - 6] == 'S' &&
+            g_buffer[g_buffer_index - 5] == 'I' &&
+            g_buffer[g_buffer_index - 4] == 'M' &&
+            g_buffer[g_buffer_index - 3] == '8' &&
+            g_buffer[g_buffer_index - 2] == '0' &&
+            g_buffer[g_buffer_index - 1] == '8')
+        {
+            printf("REBOOT\n");
+        }
+        if (g_buffer_index == OUTPUT_BUFFER_SIZE)
         {
 #ifdef VERBOSE_INCOMING
-            save_data_dump();
+            // dump_recent_bytes();
 #endif
             g_buffer_index = 0;
         }
@@ -974,7 +986,15 @@ static void internal_on_tcp_connect_complete(CELLCHIP_HANDLE handle, CELLCHIP_RE
     CELLCHIP_SIM808_INSTANCE *cellchip = (CELLCHIP_SIM808_INSTANCE *)handle;
 
 #ifdef TIGHT_MODEM_DEBUGGING
-    printf("*\n");
+    if (cellchip_result == CELLCHIP_OK)
+    {
+        printf("*\n");
+    }
+    else
+    {
+        printf("***\n");
+    }
+        
 #endif
 
     set_cellchip_connection_state(cellchip, cellchip_result == CELLCHIP_OK ? CELLCHIP_DATA_MODE : CELLCHIP_MODE_UNKNOWN);
