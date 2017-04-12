@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-/** @file ssl_socket.h
- *	@brief	 Implements socket creation for TLSIO adapters.
+/** @file socket_async.h
+ *	@brief	 Abstracts non-blocking sockets.
  */
 
 #ifndef AZURE_SOCKET_ASYNC_H
