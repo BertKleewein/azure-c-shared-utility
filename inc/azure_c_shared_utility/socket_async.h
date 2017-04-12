@@ -48,7 +48,7 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     * @param    size The number of bytes to transmit.
     *
     * @return   @c A non-negative integer N means that N bytes have been queued for transmission. The N == 0
-    *           case implies that the socket's outgoing buffer was full.
+    *           case means normal operation but the socket's outgoing buffer was full.
     *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
     */
     MOCKABLE_FUNCTION(, int, socket_async_send, int, sock, void*, buffer, size_t, size);
@@ -62,7 +62,8 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     *
     * @param    size The buffer size in bytes.
     *
-    * @return   @c A non-negative integer N means that N bytes received into buffer.
+    * @return   @c A non-negative integer N means that N bytes received into buffer. Ths N == 0 case 
+    *           means normal operation and nothing has been received.
     *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
     */
     MOCKABLE_FUNCTION(, int, socket_async_receive, int, sock, void*, buffer, size_t, size);
