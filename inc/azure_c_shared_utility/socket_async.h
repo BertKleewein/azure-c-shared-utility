@@ -40,7 +40,7 @@ extern "C" {
     typedef int SOCKET_ASYNC_HANDLE;
 
     /**
-    * @brief	Create a non-blocking socket that is correctly configured for use by a TLSIO adapter.
+    * @brief	Create a non-blocking socket that is correctly configured for asynchronous use.
     *
     * @param   sock	Receives the created SOCKET_ASYNC_HANDLE.
     *
