@@ -20,7 +20,25 @@ extern "C" {
 // socket_async exposes asynchronous socket operations while hiding OS-specifics. Committing to
 // asynchronous operation also simplifies the interface compared to generic sockets.
 
-define SOCKET_ASYNC_NULL_SOCKET -1
+#define SOCKET_ASYNC_SUCCESS 0
+#define SOCKET_ASYNC_NULL_SOCKET -1
+
+    typedef struct
+    {
+        // Keepalive is disabled by default at the TCP level. If keepalive is desired, it
+        // is strongly recommended to use one of the higher level keepalive (ping) options rather
+        // than the TCP level because the higher level options provide server connection status
+        // in addition to keeping the connection open.
+        bool keep_alive;    // true to enable keepalive, false by default
+        int keep_idle;      // seconds before first keepalive packet
+        int keep_interval;  // seconds between keepalive packets
+        int keep_count;     // number of times to try before declaring failure
+        // It is acceptable to extend this struct by adding members for future enhancement,
+        // but existing members must not be altered to ensure back-compatibility.
+    } SOCKET_ASYNC_OPTIONS;
+    typedef SOCKET_ASYNC_OPTIONS* SOCKET_ASYNC_OPTIONS_HANDLE;
+
+    typedef int SOCKET_ASYNC_HANDLE;
 
     /**
     * @brief	Create a non-blocking socket that is correctly configured for use by a TLSIO adapter.
@@ -31,12 +49,16 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     *
     * @param   is_UDP True for UDP, false for TCP.
     *
-    * @return   @c An integer file descriptor (fd) if the API call
-    *           is successful or SOCKET_ASYNC_NULL_SOCKET in case it fails. Error logging is
+    * @param   options A pointer to SOCKET_ASYNC_OPTIONS used during socket_async_create
+    *          for TCP connections only. May be NULL. Ignored for UDP sockets.
+    *          Need only exist for the duration of the socket_async_create call.
+    *
+    * @return   @c A SOCKET_ASYNC_HANDLE if the API call is successful 
+    *           or SOCKET_ASYNC_NULL_SOCKET in case it fails. Error logging is
     *           performed by the underlying concrete implementation, so no
     *           further error logging is necessary. 
     */
-    MOCKABLE_FUNCTION(, int, socket_async_create, uint32_t, host_ipv4, int, port, bool, is_UDP);
+    MOCKABLE_FUNCTION(, SOCKET_ASYNC_HANDLE, socket_async_create, uint32_t, host_ipv4, int, port, bool, is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE, options);
 
     /**
     * @brief	Send a message on the specified socket.
@@ -47,11 +69,13 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     *
     * @param    size The number of bytes to transmit.
     *
-    * @return   @c A non-negative integer N means that N bytes have been queued for transmission. The N == 0
+    * @param    sent_count Receives the number of bytes transmitted. The N == 0
     *           case means normal operation but the socket's outgoing buffer was full.
+    *
+    * @return   @c SOCKET_ASYNC_SUCCESS if successful.
     *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
     */
-    MOCKABLE_FUNCTION(, int, socket_async_send, int, sock, void*, buffer, size_t, size);
+    MOCKABLE_FUNCTION(, int, socket_async_send, SOCKET_ASYNC_HANDLE, sock, void*, buffer, size_t, size, size_t&, sent_count);
 
     /**
     * @brief	Receive a message on the specified socket.
@@ -62,11 +86,12 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     *
     * @param    size The buffer size in bytes.
     *
-    * @return   @c A non-negative integer N means that N bytes received into buffer. Ths N == 0 case 
-    *           means normal operation and nothing has been received.
+    * @param    received_count Receives the number of bytes received into the buffer.
+    *
+    * @return   @c SOCKET_ASYNC_SUCCESS if successful.
     *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
     */
-    MOCKABLE_FUNCTION(, int, socket_async_receive, int, sock, void*, buffer, size_t, size);
+    MOCKABLE_FUNCTION(, int, socket_async_receive, SOCKET_ASYNC_HANDLE, sock, void*, buffer, size_t, size, size_t&, received_count);
 
 
     /**
@@ -74,7 +99,7 @@ define SOCKET_ASYNC_NULL_SOCKET -1
     *
     * @param   sock     The socket to be closed.
     */
-    MOCKABLE_FUNCTION(, void, socket_async_close, int, sock);
+    MOCKABLE_FUNCTION(, void, socket_async_close, SOCKET_ASYNC_HANDLE, sock);
 
 
 #ifdef __cplusplus
