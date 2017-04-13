@@ -73,8 +73,6 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, int port,
 ###   socket_async_send
 `socket_async_send` attempts to send `size` bytes from `buffer` to the the underlying socket.
 
-If successful, `socket_async_send` returns 0. On failure, it returns SOCKET_ASYNC_INVALID_SOCKET.
-
 If this method fails for any reason it will close its underlying socket. This includes NULL `buffer` and `sent_count` parameters, which are assumed to be unrecoverable program bugs.
 
 ```c
