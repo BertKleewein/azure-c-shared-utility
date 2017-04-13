@@ -33,7 +33,7 @@ It is anticipated that socket_async.c will work for all non-Windows environments
 
 **SRS_SOCKET_ASYNC_30_002: [** The socket_async shall implement the methods defined in `socket_async.h`.
 ```c
-SOCKET_ASYNC_HANDLE socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, int port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
+int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, int port, bool is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE options);
 int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* sent_count);
 int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_t* received_count);
 void socket_async_close(SOCKET_ASYNC_HANDLE sock);
