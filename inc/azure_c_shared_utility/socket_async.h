@@ -20,7 +20,6 @@ extern "C" {
 // socket_async exposes asynchronous socket operations while hiding OS-specifics. Committing to
 // asynchronous operation also simplifies the interface compared to generic sockets.
 
-#define SOCKET_ASYNC_SUCCESS 0
 #define SOCKET_ASYNC_NULL_SOCKET -1
 
     typedef struct
@@ -43,6 +42,8 @@ extern "C" {
     /**
     * @brief	Create a non-blocking socket that is correctly configured for use by a TLSIO adapter.
     *
+    * @param   sock	Receives the created SOCKET_ASYNC_HANDLE.
+    *
     * @param   host_ipv4	The IPv4 of the SSL server to be contacted.
     *
     * @param   port	The port of the SSL server to use.
@@ -53,14 +54,14 @@ extern "C" {
     *          for TCP connections only. May be NULL. Ignored for UDP sockets.
     *          Need only exist for the duration of the socket_async_create call.
     *
-    * @return   @c A SOCKET_ASYNC_HANDLE if the API call is successful 
-    *           or SOCKET_ASYNC_NULL_SOCKET in case it fails. Error logging is
+    * @return   @c 0 if the API call is successful 
+    *           or __FAILURE__ in case it fails. Error logging is
     *           performed by the underlying concrete implementation, so no
     *           further error logging is necessary. 
     */
-    MOCKABLE_FUNCTION(, SOCKET_ASYNC_HANDLE, socket_async_create, uint32_t, host_ipv4, int, port, bool, is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE, options);
+    MOCKABLE_FUNCTION(, int, socket_async_create, SOCKET_ASYNC_HANDLE*, sock, uint32_t, host_ipv4, int, port, bool, is_UDP, SOCKET_ASYNC_OPTIONS_HANDLE, options);
 
-    /**
+    /** 
     * @brief	Send a message on the specified socket.
     *
     * @param    sock The socket to be used.
@@ -72,8 +73,8 @@ extern "C" {
     * @param    sent_count Receives the number of bytes transmitted. The N == 0
     *           case means normal operation but the socket's outgoing buffer was full.
     *
-    * @return   @c SOCKET_ASYNC_SUCCESS if successful.
-    *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
+    * @return   @c 0 if successful.
+    *           __FAILURE__ means an unexpected error has occurred and the socket has been closed.
     */
     MOCKABLE_FUNCTION(, int, socket_async_send, SOCKET_ASYNC_HANDLE, sock, void*, buffer, size_t, size, size_t&, sent_count);
 
@@ -88,8 +89,8 @@ extern "C" {
     *
     * @param    received_count Receives the number of bytes received into the buffer.
     *
-    * @return   @c SOCKET_ASYNC_SUCCESS if successful.
-    *           SOCKET_ASYNC_NULL_SOCKET means an unexpected error has occurred and the socket has been closed.
+    * @return   @c 0 if successful.
+    *           __FAILURE__ means an unexpected error has occurred and the socket has been closed.
     */
     MOCKABLE_FUNCTION(, int, socket_async_receive, SOCKET_ASYNC_HANDLE, sock, void*, buffer, size_t, size, size_t&, received_count);
 
