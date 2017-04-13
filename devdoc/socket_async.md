@@ -63,11 +63,11 @@ int socket_async_create(SOCKET_ASYNC_HANDLE* sock, uint32_t host_ipv4, int port,
 
 **SRS_SOCKET_ASYNC_30_017: [** The socket returned in `sock` shall be non-blocking. **]**
 
-**SRS_SOCKET_ASYNC_30_018: [** If socket option setting fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET `socket_async_create` shall return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_018: [** If socket option setting fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
 
-**SRS_SOCKET_ASYNC_30_019: [** If socket binding fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET `socket_async_create` shall return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_019: [** If socket binding fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error and return _FAILURE_. **]**
 
-**SRS_SOCKET_ASYNC_30_020: [** If socket connection fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET `socket_async_create` shall return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_020: [** If socket connection fails, the `sock` value shall be set to SOCKET_ASYNC_INVALID_SOCKET and `socket_async_create` shall log an error return _FAILURE_. **]**
 
 
 ###   socket_async_send
@@ -93,7 +93,7 @@ int socket_async_send(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, size_
 
 **SRS_SOCKET_ASYNC_30_036: [** If the underlying socket is unable to accept any bytes for transmission because its buffer is full, `socket_async_send` shall return 0 and the `sent_count` parameter shall receive the value 0. **]**
 
-**SRS_SOCKET_ASYNC_30_037: [** If `socket_async_send` fails for any reason, `socket_async_send` shall close the underlying socket and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_037: [** If `socket_async_send` fails for any reason, `socket_async_send` shall log the error and close the underlying socket and return _FAILURE_. **]**
 
 ###   socket_async_receive
 `socket_async_receive` attempts to receive up to `size` bytes into `buffer`.
@@ -118,7 +118,7 @@ int socket_async_receive(SOCKET_ASYNC_HANDLE sock, void* buffer, size_t size, si
 
 **SRS_SOCKET_ASYNC_30_056: [** If the underlying socket has no received bytes available, `socket_async_receive` shall return 0 and the `received_count` parameter shall receive the value 0. **]**
 
-**SRS_SOCKET_ASYNC_30_057: [** If `socket_async_receive` fails for any reason, `socket_async_send` shall close the underlying socket and return _FAILURE_. **]**
+**SRS_SOCKET_ASYNC_30_057: [** If `socket_async_receive` fails for any reason, `socket_async_send` shall log the error and close the underlying socket and return _FAILURE_. **]**
 
 
  ###   socket_async_close
